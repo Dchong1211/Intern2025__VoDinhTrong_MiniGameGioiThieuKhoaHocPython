@@ -1,7 +1,7 @@
 class Skills:
     def __init__(self):
         self.move = True
-        self.jump = False
+        self.jump = True
         self.double_jump = False
         self.wall_slide = False
         self.wall_jump = False

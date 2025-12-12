@@ -1,15 +1,21 @@
-# player/animation.py
 class Animation:
     def __init__(self, sprite_sheet, frame_width, frame_height, speed=0.15):
         self.frames = []
         self.speed = speed
-        self.index = 0
+        self.index = 0.0
 
         sheet_width = sprite_sheet.get_width()
+        sheet_height = sprite_sheet.get_height()
 
-        for x in range(0, sheet_width, frame_width):
-            frame = sprite_sheet.subsurface((x, 0, frame_width, frame_height))
-            self.frames.append(frame)
+        # đề phòng sprite sheet không đúng chiều cao
+        rows = sheet_height // frame_height
+
+        for row in range(rows):
+            for x in range(0, sheet_width, frame_width):
+                frame = sprite_sheet.subsurface(
+                    (x, row * frame_height, frame_width, frame_height)
+                )
+                self.frames.append(frame)
 
         self.current_frame = self.frames[0]
 

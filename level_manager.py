@@ -1,90 +1,101 @@
-import os
 import pygame
-from pytmx import load_pygame
-from items.item import Item
+from pytmx.util_pygame import load_pygame
+from player import Player
 
 
 class LevelManager:
-    def __init__(self, base_dir):
-        self.base = base_dir
-        self.tmx = None
-        self.level_index = 1
+    def __init__(self):
+        self.levels = {
+            1: "map/Level1.tmx",
+        }
 
-        self.map_w = 0
-        self.map_h = 0
-        self.spawn = (0, 0)
-        self.collisions = []
-        self.goal = None
+        self.current_level = 1
+        self.tmx_data = None
+        self.map_surface = None
+        self.player = None
+        self.objects = {}
 
-        # tất cả item trên map (code fragment, coin,…)
-        self.items = []
+        # Collision rectangles in ORIGINAL coordinate
+        self.collision_rects = []
 
-    # LOAD LEVEL
-    def load(self, level_number):
-        self.level_index = level_number
+        self.load_level(self.current_level)
 
-        path = os.path.join(self.base, f"assets/levels/level{level_number}.tmx")
-        print("Loading:", path)
+    # =====================================
+    def load_level(self, level_id):
+        print(f"> Load Level {level_id}")
 
-        self.tmx = load_pygame(path)
+        level_path = self.levels[level_id]
+        self.tmx_data = load_pygame(level_path)
 
-        tw, th = self.tmx.tilewidth, self.tmx.tileheight
-        self.map_w = self.tmx.width * tw
-        self.map_h = self.tmx.height * th
+        width = self.tmx_data.width * self.tmx_data.tilewidth
+        height = self.tmx_data.height * self.tmx_data.tileheight
+        self.map_surface = pygame.Surface((width, height), pygame.SRCALPHA)
 
-        # RESET DATA
-        self.spawn = (0, 0)
-        self.collisions = []
-        self.goal = None
-        self.items = []
+        self.draw_tile_layers()
+        self.load_objects()
 
-        # PARSE OBJECTS
-        for obj in self.tmx.objects:
+    # =====================================
+    def draw_tile_layers(self):
+        for layer in self.tmx_data.visible_layers:
+            if hasattr(layer, "tiles"):
+                for x, y, tile in layer.tiles():
+                    px = x * self.tmx_data.tilewidth
+                    py = y * self.tmx_data.tileheight
+                    self.map_surface.blit(tile, (px, py))
 
-            # Player spawn
+    # =====================================
+    def load_objects(self):
+        self.objects.clear()
+        self.collision_rects = []   # RESET COLLISIONS
+
+        for obj in self.tmx_data.objects:
+
+            # Spawn player
             if obj.name == "Player":
-                self.spawn = (obj.x, obj.y)
+                self.player = Player(obj.x, obj.y)
 
-            # Collision
-            elif obj.name == "Collision":
+            # Collision rectangles
+            if obj.name == "Collisions" or obj.type == "Collisions":
                 rect = pygame.Rect(obj.x, obj.y, obj.width, obj.height)
-                self.collisions.append(rect)
+                self.collision_rects.append(rect)
 
-            # Goal
-            elif obj.name == "Goal":
-                self.goal = pygame.Rect(obj.x, obj.y, obj.width, obj.height)
+            # Other objects
+            if obj.type and obj.type != "Collisions":
+                if obj.type not in self.objects:
+                    self.objects[obj.type] = []
+                self.objects[obj.type].append(obj)
 
-            # Item (fragment)
-            elif obj.name == "Item":
-                item_type = obj.properties.get("item_type", "fragment")
+    # =====================================
+    def update(self, dt):
+        keys = pygame.key.get_pressed()
 
-                skill = obj.properties.get("skill")      # vd: "jump"
-                code  = obj.properties.get("code")       # vd: "Jump", "=", "True"
+        if self.player:
+            # UPDATE USING ORIGINAL COORDINATES
+            self.player.update(dt, keys, self.collision_rects)
 
-                index = obj.properties.get("index")
-                index = int(index) if index is not None else 0
+    # =====================================
+    def draw(self, screen):
+        sw, sh = screen.get_size()
+        mw, mh = self.map_surface.get_size()
 
-                rows = obj.properties.get("rows")
-                rows = int(rows) if rows is not None else 1
+        # Scale map to screen
+        scaled_map = pygame.transform.scale(self.map_surface, (sw, sh))
+        screen.blit(scaled_map, (0, 0))
 
-                cols = obj.properties.get("cols")
-                cols = int(cols) if cols is not None else 1
+        # Scale factor (for drawing only)
+        scale_x = sw / mw
+        scale_y = sh / mh
 
-                required = obj.properties.get("required")
-                required = int(required) if required is not None else 1
+        # DRAW PLAYER (RENDER ONLY — NO COLLISION)
+        if self.player:
 
-                self.items.append(
-                    Item(
-                        x=obj.x,
-                        y=obj.y,
-                        item_type=item_type,
-                        skill_key=skill,
-                        code=code,
-                        index=index,
-                        rows=rows,
-                        cols=cols,
-                        required=required
-                    )
-                )
+            # Scale sprite visual size
+            pw = int(self.player.rect.width * scale_x)
+            ph = int(self.player.rect.height * scale_y)
 
-        return self
+            # Convert world coords → screen coords for rendering
+            px = int(self.player.rect.x * scale_x)
+            py = int(self.player.rect.y * scale_y)
+
+            frame = pygame.transform.scale(self.player.get_frame(), (pw, ph))
+            screen.blit(frame, (px, py))
