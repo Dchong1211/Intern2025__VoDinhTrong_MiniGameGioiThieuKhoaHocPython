@@ -5,5 +5,4 @@ class Skills:
         self.double_jump = False
         self.wall_slide = False
         self.wall_jump = False
-        self.dash = False
-        self.attack = False
+        self.dash = True

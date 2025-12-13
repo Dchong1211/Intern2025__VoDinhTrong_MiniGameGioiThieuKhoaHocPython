@@ -1,46 +1,66 @@
 import pygame
+import sys
 from level_manager import LevelManager
 
 pygame.init()
+pygame.display.set_caption("CodeRun")
 
-# Cấu hình cửa sổ mặc định
-SCREEN_WIDTH = 1280
-SCREEN_HEIGHT = 720
+BASE_W, BASE_H = 1280, 720
 
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
-pygame.display.set_caption("Python Adventure")
+screen = pygame.display.set_mode(
+    (BASE_W, BASE_H),
+    pygame.RESIZABLE
+)
 
 clock = pygame.time.Clock()
-
-level_manager = LevelManager()
+FPS = 60
 
 fullscreen = False
-running = True
 
+# Load level
+level_manager = LevelManager()
+
+WORLD_W = level_manager.map_w
+WORLD_H = level_manager.map_h
+world = pygame.Surface((WORLD_W, WORLD_H))
+
+def draw_scaled_world():
+    sw, sh = screen.get_size()
+
+    scale = sh / WORLD_H
+
+    draw_w = int(WORLD_W * scale)
+    draw_h = sh  # full chiều cao
+
+    scaled = pygame.transform.scale(world, (draw_w, draw_h))
+
+    x = (sw - draw_w) // 2
+    y = 0
+
+    screen.fill((0, 0, 0))
+    screen.blit(scaled, (x, y))
+
+running = True
 while running:
-    dt = clock.tick(60) / 1000
+    dt = clock.tick(FPS) / 1000
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        if event.type == pygame.VIDEORESIZE:
+            screen = pygame.display.set_mode(
+                event.size,
+                pygame.RESIZABLE
+            )
+    keys = pygame.key.get_pressed()
 
-        # Toggle fullscreen bằng F11
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_F11:
-                fullscreen = not fullscreen
+    level_manager.update(dt, keys)
 
-                if fullscreen:
-                    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-                else:
-                    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
+    world.fill((20, 20, 25))
+    level_manager.draw(world)
 
-    # Update logic của level
-    level_manager.update(dt)
-
-    # Render
-    screen.fill((20, 20, 20))
-    level_manager.draw(screen)
-
+    draw_scaled_world()
     pygame.display.flip()
 
 pygame.quit()
+sys.exit()

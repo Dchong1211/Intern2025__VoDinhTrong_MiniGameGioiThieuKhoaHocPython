@@ -1,129 +1,212 @@
-# player/player.py
-
 import pygame
+import os
 from player.animation import Animation
 from player.skills import Skills
 
-GRAVITY = 1800
 
-class Player(pygame.sprite.Sprite):
-    def __init__(self, x, y, anim_data):
-        super().__init__()
+class Player:
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, 32, 32)
 
-        # position & physics
-        self.x = x
-        self.y = y
-        self.vx = 0
-        self.vy = 0
+        # ===== LOAD ANIMATION =====
+        BASE = "assets/Main Characters/Virtual Guy"
+
+        def load(name):
+            return pygame.image.load(os.path.join(BASE, name)).convert_alpha()
+
+        self.animations = {
+            "idle":   Animation(load("Idle.png"), 32, 32, 0.25),
+            "run":    Animation(load("Run.png"), 32, 32, 0.25),
+            "jump":   Animation(load("Jump.png"), 32, 32, 0.25, loop=False),
+            "double": Animation(load("Double Jump.png"), 32, 32, 0.25, loop=False),
+            "fall":   Animation(load("Fall.png"), 32, 32, 0.25),
+            "slide":  Animation(load("Wall Slide.png"), 32, 32, 0.15),
+            "dash":   Animation(load("Dash.png"), 32, 32, 0.2, loop=False),
+        }
+
+        self.state = "idle"
+        self.current_anim = self.animations[self.state]
+
+        # ===== PHYSICS =====
+        self.vel_x = 0
+        self.vel_y = 0
+
+        self.speed = 3
+        self.gravity = 0.35
+        self.max_fall_speed = 10
+
+        # ===== JUMP =====
+        self.jump_force = -6
+        self.jump_key_down = False
+        self.jump_count = 0
         self.on_ground = False
+
+        # ===== GROUND BUFFER =====
+        self.ground_buffer = 0
+        self.ground_buffer_time = 4
+
+        # ===== WALL =====
+        self.on_wall = False
+        self.wall_dir = 0
+
+        # ===== DASH (FULL FIX) =====
+        self.dash_force = 10
+        self.dash_time = 8
+        self.dash_timer = 0
+        self.can_dash = True
+        self.dash_dir = 1
+        self.dash_key_down = False
+
+        # ===== SKILLS =====
+        self.skills = Skills()
         self.facing_right = True
 
-        # skills
-        self.skills = Skills()
-        self.can_double_jump = True
+    # ====================================================
+    def _handle_input(self, keys):
 
-        # animation set truyền vào từ main
-        self.animations = anim_data  
-        self.current_anim = "idle"
+        # ❌ KHÓA INPUT KHI DASH
+        if self.dash_timer > 0:
+            return
 
-        # first frame = default image
-        self.image = self.animations[self.current_anim].get_image()
-        self.rect = self.image.get_rect(topleft=(x, y))
+        self.vel_x = 0
 
-    # --------------------------------------------------
-    # Animation handler
-    # --------------------------------------------------
-    def set_anim(self, name):
-        if self.current_anim != name:
-            self.current_anim = name
-            self.animations[name].reset()
+        left = keys[pygame.K_a] or keys[pygame.K_LEFT]
+        right = keys[pygame.K_d] or keys[pygame.K_RIGHT]
 
-    # --------------------------------------------------
-    # Input
-    # --------------------------------------------------
-    def handle_input(self, keys):
-        self.vx = 0
+        if left and self.skills.move:
+            self.vel_x = -self.speed
+            self.facing_right = False
+        elif right and self.skills.move:
+            self.vel_x = self.speed
+            self.facing_right = True
 
-        # Move
-        if self.skills.move:
-            if keys[pygame.K_a]:
-                self.vx = -250
-                self.facing_right = False
-            if keys[pygame.K_d]:
-                self.vx = 250
-                self.facing_right = True
+        # ---- JUMP ----
+        space = keys[pygame.K_SPACE]
+        pressed = space and not self.jump_key_down
 
-        # Jump + Double Jump
-        if keys[pygame.K_SPACE]:
-            if self.on_ground and self.skills.jump:
-                self.vy = -650
-                self.on_ground = False
-                self.can_double_jump = True
+        if pressed:
+            if self.on_wall and not self.on_ground and self.skills.wall_jump:
+                self.vel_y = self.jump_force
+                self.vel_x = 6 * (-self.wall_dir)
+                self.jump_count = 1
+            else:
+                if self.jump_count == 0 and self.skills.jump:
+                    self.vel_y = self.jump_force
+                    self.jump_count = 1
+                elif self.jump_count == 1 and self.skills.double_jump:
+                    self.vel_y = self.jump_force
+                    self.jump_count = 2
 
-            elif not self.on_ground and self.skills.double_jump and self.can_double_jump:
-                self.vy = -650
-                self.can_double_jump = False
+        self.jump_key_down = space
 
-        # Dash
-        if keys[pygame.K_LSHIFT] and self.skills.dash:
-            dash_speed = 450
-            self.vx = dash_speed if self.facing_right else -dash_speed
-            self.set_anim("dash")
+        # ---- DASH ----
+        shift = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
+        pressed = shift and not self.dash_key_down
 
-        # Attack
-        if keys[pygame.K_j] and self.skills.attack:
-            self.set_anim("attack")
+        if pressed and self.skills.dash and self.can_dash:
+            self.dash_dir = 1 if self.facing_right else -1
+            self.vel_x = self.dash_force * self.dash_dir
+            self.vel_y = 0
+            self.dash_timer = self.dash_time
+            self.can_dash = False
 
-    # --------------------------------------------------
-    # Physics update
-    # --------------------------------------------------
-    def update(self, dt, tiles, keys):
-        self.handle_input(keys)
+        self.dash_key_down = shift
 
-        # gravity
-        if not self.on_ground:
-            self.vy += GRAVITY * dt
+    # ====================================================
+    def update(self, dt, keys, tiles):
 
-        # apply movement
-        self.x += self.vx * dt
-        self.y += self.vy * dt
-        self.rect.topleft = (self.x, self.y)
+        self._handle_input(keys)
 
-        # collision
-        self.on_ground = False
+        # ===== GRAVITY (OFF WHEN DASH) =====
+        if self.dash_timer <= 0:
+            self.vel_y += self.gravity
+            self.vel_y = min(self.vel_y, self.max_fall_speed)
+        else:
+            self.vel_y = 0
+            self.vel_x = self.dash_force * self.dash_dir
+
+        # ===== MOVE X =====
+        self.rect.x += self.vel_x
+        self.on_wall = False
+
         for t in tiles:
             if self.rect.colliderect(t):
-
-                # vertical
-                if self.vy > 0:
-                    self.rect.bottom = t.top
-                    self.y = self.rect.y
-                    self.vy = 0
-                    self.on_ground = True
-                elif self.vy < 0:
-                    self.rect.top = t.bottom
-                    self.y = self.rect.y
-                    self.vy = 0
-
-                # horizontal
-                if self.vx > 0:
+                if self.vel_x > 0:
                     self.rect.right = t.left
-                    self.x = self.rect.x
-                elif self.vx < 0:
+                    self.on_wall = True
+                    self.wall_dir = 1
+                elif self.vel_x < 0:
                     self.rect.left = t.right
-                    self.x = self.rect.x
+                    self.on_wall = True
+                    self.wall_dir = -1
 
-        # select animation
-        if not self.on_ground:
-            self.set_anim("jump")
-        elif self.vx != 0:
-            self.set_anim("run")
+        # ===== MOVE Y =====
+        self.rect.y += self.vel_y
+        self.on_ground = False
+
+        for t in tiles:
+            if self.rect.colliderect(t):
+                if self.vel_y > 0:
+                    self.rect.bottom = t.top
+                    self.vel_y = 0
+                    self.on_ground = True
+                    self.jump_count = 0
+                    self.can_dash = True
+                    self.dash_timer = 0
+                elif self.vel_y < 0:
+                    self.rect.top = t.bottom
+                    self.vel_y = 0
+
+        # ===== GROUND BUFFER =====
+        if self.on_ground:
+            self.ground_buffer = self.ground_buffer_time
         else:
-            self.set_anim("idle")
+            self.ground_buffer = max(0, self.ground_buffer - 1)
 
-        # update anim frame
-        anim = self.animations[self.current_anim]
-        anim.update()
+        grounded = self.ground_buffer > 0
 
-        img = anim.get_image()
-        self.image = img if self.facing_right else pygame.transform.flip(img, True, False)
+        # ===== WALL SLIDE (OFF WHEN DASH) =====
+        wall_sliding = (
+            self.on_wall and not grounded
+            and self.vel_y > 0
+            and self.skills.wall_slide
+            and self.dash_timer <= 0
+        )
+
+        if wall_sliding:
+            self.vel_y = min(self.vel_y, 1.5)
+
+        # ===== DASH TIMER =====
+        if self.dash_timer > 0:
+            self.dash_timer -= 1
+
+        # ===== STATE MACHINE =====
+        if self.dash_timer > 0:
+            self.state = "dash"
+
+        elif grounded:
+            self.state = "run" if self.vel_x != 0 else "idle"
+
+        elif wall_sliding:
+            self.state = "slide"
+
+        else:
+            if self.vel_y < 0:
+                self.state = "double" if self.jump_count == 2 else "jump"
+            else:
+                self.state = "fall"
+
+        # ===== ANIMATION =====
+        new_anim = self.animations[self.state]
+        if new_anim != self.current_anim:
+            self.current_anim = new_anim
+            self.current_anim.reset()
+        else:
+            self.current_anim.update()
+
+    # ====================================================
+    def draw(self, surf):
+        img = self.current_anim.get_image()
+        if not self.facing_right:
+            img = pygame.transform.flip(img, True, False)
+        surf.blit(img, self.rect.topleft)
