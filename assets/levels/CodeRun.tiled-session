@@ -13,11 +13,22 @@
             "scaleInEditor": 1
         },
         "level1.tmx": {
-            "scale": 1.4249999999999998,
-            "selectedLayer": 3,
+            "scale": 1.5,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 244.561403508772,
-                "y": 189.1228070175439
+                "x": 278.33333333333337,
+                "y": 128.33333333333331
+            }
+        },
+        "level2.tmx": {
+            "expandedObjectLayers": [
+                5
+            ],
+            "scale": 1.5,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 309.66666666666663,
+                "y": 159.66666666666663
             }
         },
         "tileset.tsx": {
@@ -32,11 +43,13 @@
     "map.width": 40,
     "openFiles": [
         "tileset.tsx",
+        "level2.tmx",
         "level1.tmx"
     ],
     "project": "CodeRun.tiled-project",
     "recentFiles": [
         "tileset.tsx",
+        "level2.tmx",
         "level1.tmx",
         "Blue.tsx"
     ],
