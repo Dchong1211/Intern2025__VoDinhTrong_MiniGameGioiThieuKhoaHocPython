@@ -14,8 +14,9 @@ from .scrolling_background import ScrollingBackground
 
 class LevelManager:
     def __init__(self, save):
-        self.save = save   # 👈 NHẬN SAVE MANAGER
-
+        self.save = save   # 👈 SAVE MANAGER
+        self.completed_level_id = None
+        # ===== LEVEL LIST =====
         self.levels = {
             1: "assets/levels/level1.tmx",
             2: "assets/levels/level2.tmx",
@@ -41,6 +42,11 @@ class LevelManager:
         # ===== INVENTORY (GLOBAL) =====
         self.item_manager = ItemManager()
 
+        # 🔥 LOAD FRUIT TỪ SAVE (BẮT BUỘC)
+        self.item_manager.import_data(
+            self.save.get_fruits()
+        )
+
         # ===== BACKGROUND RANDOM =====
         self.bg_folder = "assets/Background"
         self.bg_files = [
@@ -62,7 +68,6 @@ class LevelManager:
 
     # ======================================================
     def load_level(self, level_id):
-
         self.current_level = level_id
         self.level_completed = False
 
@@ -109,7 +114,6 @@ class LevelManager:
         self._load_objects()
 
         # ===== CHECKPOINT STATE THEO SAVE =====
-        # Nếu level này đã hoàn thành từ trước → cờ idle sẵn
         if (
             self.checkpoint
             and self.save.is_level_unlocked(self.current_level + 1)
@@ -153,6 +157,7 @@ class LevelManager:
                 )
 
             elif obj.type == "Items":
+                # 👉 Level đã hoàn thành thì không spawn lại item
                 if not self.save.is_level_unlocked(self.current_level + 1):
                     self.item_manager.add(obj.x, obj.y, obj.name)
 
@@ -163,7 +168,7 @@ class LevelManager:
         if self.bg:
             self.bg.update(dt)
 
-        # ===== PLAYER UPDATE =====
+        # ===== PLAYER + ITEM UPDATE =====
         if self.state in (
             LevelState.PLAYING,
             LevelState.CHECKPOINT_ANIM,
@@ -176,7 +181,9 @@ class LevelManager:
                 self.collisions,
                 self.one_way_platforms
             )
-            self.item_manager.update(self.player)
+
+            # 🔥 TRUYỀN SAVE VÀO ITEM MANAGER (FIX CHÍNH)
+            self.item_manager.update(self.player, self.save)
 
         # =============== PLAYING =================
         if self.state == LevelState.PLAYING:
@@ -202,14 +209,19 @@ class LevelManager:
 
         # =============== LOAD NEXT LEVEL =================
         elif self.state == LevelState.LOADING:
+            self.completed_level_id = self.current_level
             self.level_completed = True
 
             next_level = self.current_level + 1
+
             if next_level in self.levels:
+                self.save.unlock_level(next_level)
                 self.load_level(next_level)
                 self.state = LevelState.FADING_IN
             else:
                 print("🎉 GAME COMPLETE")
+                self.state = LevelState.PLAYING
+
 
         # =============== FADE IN =================
         elif self.state == LevelState.FADING_IN:

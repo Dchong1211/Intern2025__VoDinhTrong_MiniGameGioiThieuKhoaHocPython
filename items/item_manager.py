@@ -5,7 +5,7 @@ class ItemManager:
     def __init__(self):
         self.items = []
 
-        # ===== INVENTORY TOÀN GAME (ĐÃ CHỐT) =====
+        # ===== SỐ LƯỢNG TRÁI =====
         self.count = {
             "Apple": 0,
             "Bananas": 0,
@@ -17,49 +17,57 @@ class ItemManager:
             "Strawberry": 0,
         }
 
-        # ===== FRUIT NHẶT TRONG LEVEL HIỆN TẠI =====
-        self.level_collected = {k: 0 for k in self.count}
+        # ===== TRÁI ĐÃ PHÁT HIỆN CHƯA =====
+        self.discovered = {k: False for k in self.count}
 
-    # ==================================================
+    # ======================================
     def clear_level_items(self):
         self.items.clear()
-        self.level_collected = {k: 0 for k in self.count}
 
-    # ==================================================
+    # ======================================
     def add(self, x, y, name):
         self.items.append(Item(x, y, name))
 
-    # ==================================================
-    def update(self, player):
+    # ======================================
+    def update(self, player, save_manager=None):
         for item in self.items[:]:
             item.update()
 
             if not item.collected and player.rect.colliderect(item.rect):
                 item.collect()
-                if item.name in self.level_collected:
-                    self.level_collected[item.name] += 1
+
+                if item.name in self.count:
+                    self.count[item.name] += 1
+                    self.discovered[item.name] = True  # 🔥 PHÁT HIỆN
+
+                    if save_manager:
+                        save_manager.save_fruits(
+                            self.export_data()
+                        )
 
             if item.dead:
                 self.items.remove(item)
 
-    # ==================================================
+    # ======================================
     def draw(self, surf):
         for item in self.items:
             item.draw(surf)
 
-    # ==================================================
-    def commit_level_items(self):
-        """Chốt fruit khi qua level"""
-        for k in self.count:
-            self.count[k] += self.level_collected[k]
-
-        self.level_collected = {k: 0 for k in self.count}
-
-    # ==================================================
+    # ======================================
     def export_data(self):
-        return self.count.copy()
+        return {
+            "count": self.count,
+            "discovered": self.discovered
+        }
 
+    # ======================================
     def import_data(self, data):
+        if not data:
+            return
+
         for k in self.count:
-            if k in data:
-                self.count[k] = data[k]
+            if "count" in data and k in data["count"]:
+                self.count[k] = data["count"][k]
+
+            if "discovered" in data and k in data["discovered"]:
+                self.discovered[k] = data["discovered"][k]

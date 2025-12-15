@@ -30,18 +30,16 @@ state = GameState.MENU
 
 menu = MainMenu()
 level_select = LevelSelect(save)
-level_manager = LevelManager(save)
 
-# ===== LOAD FRUIT TỪ SAVE =====
-level_manager.item_manager.import_data(
-    save.get_fruits()
-)
+# 🔥 LevelManager tự load fruit từ save rồi
+level_manager = LevelManager(save)
 
 # ================= WORLD =================
 WORLD_W = level_manager.map_w
 WORLD_H = level_manager.map_h
 world = pygame.Surface((WORLD_W, WORLD_H), pygame.SRCALPHA)
 
+# HUD đọc trực tiếp từ ItemManager
 hud = HUD(level_manager.item_manager)
 
 
@@ -99,28 +97,12 @@ while running:
 
         level_manager.update(dt, keys)
 
-        # ===== CHỐT FRUIT + SAVE KHI QUA LEVEL =====
-        if level_manager.level_completed:
-            # chốt fruit của level vừa qua
-            level_manager.item_manager.commit_level_items()
-
-            # lưu fruit đã chốt
-            save.set_fruits(
-                level_manager.item_manager.export_data()
-            )
-
-            # lưu level đã hoàn thành
-            completed_level = level_manager.current_level - 1
-            save.complete_level(completed_level)
-
-            level_manager.level_completed = False
-
+        # ===== DRAW =====
         world.fill((20, 20, 25))
         level_manager.draw(world)
 
         draw_scaled_world()
         hud.draw(screen)
-
 
     pygame.display.flip()
 

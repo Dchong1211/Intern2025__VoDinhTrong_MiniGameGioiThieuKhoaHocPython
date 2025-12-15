@@ -1,4 +1,31 @@
 {
-    "unlocked_level": 1,
-    "completed_levels": []
+    "fruits": {
+        "count": {
+            "Apple": 6,
+            "Bananas": 0,
+            "Cherries": 11,
+            "Kiwi": 0,
+            "Melon": 0,
+            "Orange": 4,
+            "Pineapple": 0,
+            "Strawberry": 0
+        },
+        "discovered": {
+            "Apple": true,
+            "Bananas": false,
+            "Cherries": true,
+            "Kiwi": false,
+            "Melon": false,
+            "Orange": true,
+            "Pineapple": false,
+            "Strawberry": false
+        }
+    },
+    "levels": {
+        "unlocked": [
+            1,
+            2,
+            3
+        ]
+    }
 }
