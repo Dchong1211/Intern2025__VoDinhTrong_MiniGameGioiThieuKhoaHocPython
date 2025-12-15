@@ -1,1 +1,1 @@
-    draw_scaled_world()   # vẽ map + player + item
+from ui.hud import HUD

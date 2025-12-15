@@ -1,4 +1,7 @@
 import pygame
+import os
+import random
+
 from pytmx.util_pygame import load_pygame
 from pytmx import TiledTileLayer
 
@@ -6,6 +9,7 @@ from player.player import Player
 from items.item_manager import ItemManager
 from .checkpoint import Checkpoint
 from .level_state import LevelState
+from .scrolling_background import ScrollingBackground
 
 
 class LevelManager:
@@ -34,6 +38,15 @@ class LevelManager:
         # inventory global (không reset)
         self.item_manager = ItemManager()
 
+        # ===== BACKGROUND RANDOM =====
+        self.bg_folder = "assets/Background"
+        self.bg_files = [
+            f for f in os.listdir(self.bg_folder)
+            if f.endswith(".png")
+        ]
+        self.bg = None
+        self.last_bg = None
+
         # STATE
         self.state = LevelState.PLAYING
         self.fade_alpha = 0
@@ -61,6 +74,24 @@ class LevelManager:
 
         self.item_manager.clear_level_items()
 
+        # ===== RANDOM BACKGROUND (KHÔNG TRÙNG LIÊN TIẾP) =====
+        bg_name = random.choice(self.bg_files)
+        while bg_name == self.last_bg and len(self.bg_files) > 1:
+            bg_name = random.choice(self.bg_files)
+
+        self.last_bg = bg_name
+        bg_path = os.path.join(self.bg_folder, bg_name)
+
+        self.bg = ScrollingBackground(
+            bg_path,
+            self.map_w,
+            self.map_h,
+            speed=40
+        )
+
+        print(f"🎨 Background: {bg_name}")
+
+        # ===== MAP SURFACE =====
         self.map_surface = pygame.Surface(
             (self.map_w, self.map_h),
             pygame.SRCALPHA
@@ -90,7 +121,7 @@ class LevelManager:
             if obj.name == "Player":
                 self.player = Player(obj.x, obj.y)
 
-            elif obj.name == "Checkpoint":   # 👈 đổi tên ở đây
+            elif obj.name == "Checkpoint":
                 self.checkpoint = Checkpoint(
                     obj.x, obj.y, obj.width, obj.height
                 )
@@ -106,7 +137,11 @@ class LevelManager:
     # ======================================================
     def update(self, dt, keys):
 
-        # ===== PLAYER LUÔN UPDATE (trừ lúc load) =====
+        # ===== BACKGROUND UPDATE =====
+        if self.bg:
+            self.bg.update(dt)
+
+        # ===== PLAYER LUÔN UPDATE =====
         if self.state in (
             LevelState.PLAYING,
             LevelState.CHECKPOINT_ANIM,
@@ -156,8 +191,15 @@ class LevelManager:
 
     # ======================================================
     def draw(self, surf):
+
+        # ===== BACKGROUND =====
+        if self.bg:
+            self.bg.draw(surf)
+
+        # ===== MAP =====
         surf.blit(self.map_surface, (0, 0))
 
+        # ===== OBJECTS =====
         self.item_manager.draw(surf)
 
         if self.checkpoint:
@@ -165,7 +207,7 @@ class LevelManager:
 
         self.player.draw(surf)
 
-        # FADE OVERLAY
+        # ===== FADE =====
         if self.fade_alpha > 0:
             fade = pygame.Surface((self.map_w, self.map_h))
             fade.fill((0, 0, 0))

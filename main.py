@@ -5,12 +5,17 @@ from level.level_manager import LevelManager
 from ui.hud import HUD
 from ui.main_menu import MainMenu
 from ui.game_state import GameState
+from ui.level_select import LevelSelect
+from data.progress import Progress
 
 pygame.init()
-pygame.display.set_caption("CodeRun")
 
+pygame.display.set_caption("Code Fruit")
 BASE_W, BASE_H = 1280, 720
 screen = pygame.display.set_mode((BASE_W, BASE_H), pygame.RESIZABLE)
+
+icon = pygame.image.load("assets/Background/Logo.png").convert_alpha()
+pygame.display.set_icon(icon)
 
 clock = pygame.time.Clock()
 FPS = 60
@@ -20,6 +25,8 @@ fullscreen = False
 state = GameState.MENU
 
 menu = MainMenu()
+progress = Progress()
+level_select = LevelSelect(progress)
 level_manager = LevelManager()
 
 # World
@@ -34,9 +41,7 @@ def draw_scaled_world():
     scale = sh / WORLD_H
 
     draw_w = int(WORLD_W * scale)
-    draw_h = sh
-
-    scaled = pygame.transform.scale(world, (draw_w, draw_h))
+    scaled = pygame.transform.scale(world, (draw_w, sh))
     x = (sw - draw_w) // 2
 
     screen.fill((0, 0, 0))
@@ -66,6 +71,13 @@ while running:
     if state == GameState.MENU:
         result = menu.update(screen)
         if result == "PLAY":
+            state = GameState.LEVEL_SELECT
+
+    # =============== LEVEL SELECT =================
+    elif state == GameState.LEVEL_SELECT:
+        level = level_select.update(screen)
+        if level:
+            level_manager.load_level(level)
             state = GameState.PLAYING
 
     # =============== PLAYING =================
