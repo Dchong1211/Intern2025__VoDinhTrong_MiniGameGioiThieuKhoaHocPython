@@ -31,7 +31,7 @@ state = GameState.MENU
 menu = MainMenu()
 level_select = LevelSelect(save)
 
-# 🔥 LevelManager tự load fruit từ save rồi
+# 🔥 LevelManager tự load fruit + objective
 level_manager = LevelManager(save)
 
 # ================= WORLD =================
@@ -39,9 +39,11 @@ WORLD_W = level_manager.map_w
 WORLD_H = level_manager.map_h
 world = pygame.Surface((WORLD_W, WORLD_H), pygame.SRCALPHA)
 
-# HUD đọc trực tiếp từ ItemManager
-hud = HUD(level_manager.item_manager)
-
+# 🔥 HUD cần cả inventory + objective
+hud = HUD(
+    level_manager.item_manager,
+    level_manager.objective
+)
 
 # ==================================================
 def draw_scaled_world():
@@ -67,7 +69,10 @@ while running:
             running = False
 
         elif event.type == pygame.VIDEORESIZE:
-            screen = pygame.display.set_mode(event.size, pygame.RESIZABLE)
+            screen = pygame.display.set_mode(
+                event.size,
+                pygame.RESIZABLE
+            )
 
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_F11:
@@ -77,6 +82,9 @@ while running:
                 ) if fullscreen else pygame.display.set_mode(
                     (BASE_W, BASE_H), pygame.RESIZABLE
                 )
+
+            elif event.key == pygame.K_j:
+                hud.show_objectives = not hud.show_objectives
 
     # ================= MENU =================
     if state == GameState.MENU:
@@ -89,6 +97,13 @@ while running:
         level = level_select.update(screen)
         if level:
             level_manager.load_level(level)
+
+            # 🔥 HUD luôn dùng objective của level hiện tại
+            hud = HUD(
+                level_manager.item_manager,
+                level_manager.objective
+            )
+
             state = GameState.PLAYING
 
     # ================= PLAYING =================
@@ -97,11 +112,13 @@ while running:
 
         level_manager.update(dt, keys)
 
-        # ===== DRAW =====
+        # ===== DRAW WORLD =====
         world.fill((20, 20, 25))
         level_manager.draw(world)
 
         draw_scaled_world()
+
+        # ===== DRAW HUD =====
         hud.draw(screen)
 
     pygame.display.flip()

@@ -29,7 +29,7 @@ class ItemManager:
         self.items.append(Item(x, y, name))
 
     # ======================================
-    def update(self, player, save_manager=None):
+    def update(self, player, save_manager=None, objective=None):
         for item in self.items[:]:
             item.update()
 
@@ -38,15 +38,18 @@ class ItemManager:
 
                 if item.name in self.count:
                     self.count[item.name] += 1
-                    self.discovered[item.name] = True  # 🔥 PHÁT HIỆN
+                    self.discovered[item.name] = True
+
+                    # 🔥 báo đúng loại fruit cho objective
+                    if objective:
+                        objective.add(item.name, 1)
 
                     if save_manager:
-                        save_manager.save_fruits(
-                            self.export_data()
-                        )
+                        save_manager.save_fruits(self.export_data())
 
             if item.dead:
                 self.items.remove(item)
+
 
     # ======================================
     def draw(self, surf):

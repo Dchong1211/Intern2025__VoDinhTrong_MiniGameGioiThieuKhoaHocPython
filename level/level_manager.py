@@ -10,12 +10,14 @@ from items.item_manager import ItemManager
 from .checkpoint import Checkpoint
 from .level_state import LevelState
 from .scrolling_background import ScrollingBackground
+from .level_objective import LevelObjective
 
 
 class LevelManager:
     def __init__(self, save):
-        self.save = save   # 👈 SAVE MANAGER
+        self.save = save
         self.completed_level_id = None
+
         # ===== LEVEL LIST =====
         self.levels = {
             1: "assets/levels/level1.tmx",
@@ -41,11 +43,12 @@ class LevelManager:
 
         # ===== INVENTORY (GLOBAL) =====
         self.item_manager = ItemManager()
-
-        # 🔥 LOAD FRUIT TỪ SAVE (BẮT BUỘC)
         self.item_manager.import_data(
             self.save.get_fruits()
         )
+
+        # ===== OBJECTIVE (PER LEVEL) =====
+        self.objective = LevelObjective()
 
         # ===== BACKGROUND RANDOM =====
         self.bg_folder = "assets/Background"
@@ -61,7 +64,6 @@ class LevelManager:
         self.fade_alpha = 0
         self.fade_speed = 300
 
-        # ===== SAVE FLAG =====
         self.level_completed = False
 
         self.load_level(self.current_level)
@@ -88,9 +90,10 @@ class LevelManager:
         self.item_manager.clear_level_items()
 
         # ===== RANDOM BACKGROUND =====
+        random.seed(self.current_level)  # 🔒 khóa theo level
         bg_name = random.choice(self.bg_files)
-        while bg_name == self.last_bg and len(self.bg_files) > 1:
-            bg_name = random.choice(self.bg_files)
+        random.seed()  # mở lại random toàn cục
+
 
         self.last_bg = bg_name
         bg_path = os.path.join(self.bg_folder, bg_name)
@@ -136,6 +139,8 @@ class LevelManager:
 
     # ======================================================
     def _load_objects(self):
+        fruit_max = {}
+
         for obj in self.tmx.objects:
 
             if obj.name == "Player":
@@ -157,9 +162,10 @@ class LevelManager:
                 )
 
             elif obj.type == "Items":
-                # 👉 Level đã hoàn thành thì không spawn lại item
-                if not self.save.is_level_unlocked(self.current_level + 1):
-                    self.item_manager.add(obj.x, obj.y, obj.name)
+                self.item_manager.add(obj.x, obj.y, obj.name)
+                fruit_max[obj.name] = fruit_max.get(obj.name, 0) + 1
+
+        self.objective.generate(fruit_max)
 
     # ======================================================
     def update(self, dt, keys):
@@ -182,8 +188,11 @@ class LevelManager:
                 self.one_way_platforms
             )
 
-            # 🔥 TRUYỀN SAVE VÀO ITEM MANAGER (FIX CHÍNH)
-            self.item_manager.update(self.player, self.save)
+            self.item_manager.update(
+                self.player,
+                self.save,
+                self.objective
+            )
 
         # =============== PLAYING =================
         if self.state == LevelState.PLAYING:
@@ -191,6 +200,9 @@ class LevelManager:
                 self.checkpoint
                 and self.player.rect.colliderect(self.checkpoint.rect)
             ):
+                if not self.objective.is_completed():
+                    return
+
                 self.checkpoint.activate()
                 self.state = LevelState.CHECKPOINT_ANIM
 
@@ -221,7 +233,6 @@ class LevelManager:
             else:
                 print("🎉 GAME COMPLETE")
                 self.state = LevelState.PLAYING
-
 
         # =============== FADE IN =================
         elif self.state == LevelState.FADING_IN:
