@@ -13,7 +13,9 @@ from .scrolling_background import ScrollingBackground
 
 
 class LevelManager:
-    def __init__(self):
+    def __init__(self, save):
+        self.save = save   # 👈 NHẬN SAVE MANAGER
+
         self.levels = {
             1: "assets/levels/level1.tmx",
             2: "assets/levels/level2.tmx",
@@ -30,12 +32,13 @@ class LevelManager:
         self.map_w = 0
         self.map_h = 0
 
-        # runtime objects
+        # ===== RUNTIME OBJECTS =====
         self.player = None
         self.checkpoint = None
         self.collisions = []
+        self.one_way_platforms = []
 
-        # inventory global (không reset)
+        # ===== INVENTORY (GLOBAL) =====
         self.item_manager = ItemManager()
 
         # ===== BACKGROUND RANDOM =====
@@ -47,18 +50,22 @@ class LevelManager:
         self.bg = None
         self.last_bg = None
 
-        # STATE
+        # ===== STATE =====
         self.state = LevelState.PLAYING
         self.fade_alpha = 0
-        self.fade_speed = 300  # alpha / giây
+        self.fade_speed = 300
+
+        # ===== SAVE FLAG =====
+        self.level_completed = False
 
         self.load_level(self.current_level)
 
     # ======================================================
     def load_level(self, level_id):
-        print(f"> Load level {level_id}")
 
         self.current_level = level_id
+        self.level_completed = False
+
         self.tmx = load_pygame(self.levels[level_id])
 
         self.tw = self.tmx.tilewidth
@@ -67,14 +74,15 @@ class LevelManager:
         self.map_w = self.tmx.width * self.tw
         self.map_h = self.tmx.height * self.th
 
-        # reset runtime
+        # ===== RESET =====
         self.player = None
         self.checkpoint = None
-        self.collisions = []
+        self.collisions.clear()
+        self.one_way_platforms.clear()
 
         self.item_manager.clear_level_items()
 
-        # ===== RANDOM BACKGROUND (KHÔNG TRÙNG LIÊN TIẾP) =====
+        # ===== RANDOM BACKGROUND =====
         bg_name = random.choice(self.bg_files)
         while bg_name == self.last_bg and len(self.bg_files) > 1:
             bg_name = random.choice(self.bg_files)
@@ -99,6 +107,14 @@ class LevelManager:
 
         self._render_map()
         self._load_objects()
+
+        # ===== CHECKPOINT STATE THEO SAVE =====
+        # Nếu level này đã hoàn thành từ trước → cờ idle sẵn
+        if (
+            self.checkpoint
+            and self.save.is_level_unlocked(self.current_level + 1)
+        ):
+            self.checkpoint.force_active()
 
         if self.player is None:
             self.player = Player(32, 32)
@@ -131,24 +147,35 @@ class LevelManager:
                     pygame.Rect(obj.x, obj.y, obj.width, obj.height)
                 )
 
+            elif obj.name == "OneWay":
+                self.one_way_platforms.append(
+                    pygame.Rect(obj.x, obj.y, obj.width, obj.height)
+                )
+
             elif obj.type == "Items":
-                self.item_manager.add(obj.x, obj.y, obj.name)
+                if not self.save.is_level_unlocked(self.current_level + 1):
+                    self.item_manager.add(obj.x, obj.y, obj.name)
 
     # ======================================================
     def update(self, dt, keys):
 
-        # ===== BACKGROUND UPDATE =====
+        # ===== BACKGROUND =====
         if self.bg:
             self.bg.update(dt)
 
-        # ===== PLAYER LUÔN UPDATE =====
+        # ===== PLAYER UPDATE =====
         if self.state in (
             LevelState.PLAYING,
             LevelState.CHECKPOINT_ANIM,
             LevelState.FADING_OUT,
             LevelState.FADING_IN
         ):
-            self.player.update(dt, keys, self.collisions)
+            self.player.update(
+                dt,
+                keys,
+                self.collisions,
+                self.one_way_platforms
+            )
             self.item_manager.update(self.player)
 
         # =============== PLAYING =================
@@ -160,7 +187,7 @@ class LevelManager:
                 self.checkpoint.activate()
                 self.state = LevelState.CHECKPOINT_ANIM
 
-        # =============== CHECKPOINT ANIMATION =================
+        # =============== CHECKPOINT =================
         elif self.state == LevelState.CHECKPOINT_ANIM:
             self.checkpoint.update(dt)
             if self.checkpoint.animation_finished():
@@ -175,6 +202,8 @@ class LevelManager:
 
         # =============== LOAD NEXT LEVEL =================
         elif self.state == LevelState.LOADING:
+            self.level_completed = True
+
             next_level = self.current_level + 1
             if next_level in self.levels:
                 self.load_level(next_level)

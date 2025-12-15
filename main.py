@@ -6,10 +6,11 @@ from ui.hud import HUD
 from ui.main_menu import MainMenu
 from ui.game_state import GameState
 from ui.level_select import LevelSelect
-from data.progress import Progress
+from data.save_manager import SaveManager
 
 pygame.init()
 
+# ================= WINDOW =================
 pygame.display.set_caption("Code Fruit")
 BASE_W, BASE_H = 1280, 720
 screen = pygame.display.set_mode((BASE_W, BASE_H), pygame.RESIZABLE)
@@ -21,21 +22,30 @@ clock = pygame.time.Clock()
 FPS = 60
 fullscreen = False
 
-# ===== STATE =====
+# ================= SAVE =================
+save = SaveManager()
+
+# ================= STATE =================
 state = GameState.MENU
 
 menu = MainMenu()
-progress = Progress()
-level_select = LevelSelect(progress)
-level_manager = LevelManager()
+level_select = LevelSelect(save)
+level_manager = LevelManager(save)
 
-# World
+# ===== LOAD FRUIT TỪ SAVE =====
+level_manager.item_manager.import_data(
+    save.get_fruits()
+)
+
+# ================= WORLD =================
 WORLD_W = level_manager.map_w
 WORLD_H = level_manager.map_h
 world = pygame.Surface((WORLD_W, WORLD_H), pygame.SRCALPHA)
 
 hud = HUD(level_manager.item_manager)
 
+
+# ==================================================
 def draw_scaled_world():
     sw, sh = screen.get_size()
     scale = sh / WORLD_H
@@ -47,10 +57,13 @@ def draw_scaled_world():
     screen.fill((0, 0, 0))
     screen.blit(scaled, (x, 0))
 
+
+# ================= MAIN LOOP =================
 running = True
 while running:
     dt = clock.tick(FPS) / 1000
 
+    # ---------- EVENTS ----------
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -67,29 +80,47 @@ while running:
                     (BASE_W, BASE_H), pygame.RESIZABLE
                 )
 
-    # =============== MENU =================
+    # ================= MENU =================
     if state == GameState.MENU:
         result = menu.update(screen)
         if result == "PLAY":
             state = GameState.LEVEL_SELECT
 
-    # =============== LEVEL SELECT =================
+    # ================= LEVEL SELECT =================
     elif state == GameState.LEVEL_SELECT:
         level = level_select.update(screen)
         if level:
             level_manager.load_level(level)
             state = GameState.PLAYING
 
-    # =============== PLAYING =================
+    # ================= PLAYING =================
     elif state == GameState.PLAYING:
         keys = pygame.key.get_pressed()
+
         level_manager.update(dt, keys)
+
+        # ===== CHỐT FRUIT + SAVE KHI QUA LEVEL =====
+        if level_manager.level_completed:
+            # chốt fruit của level vừa qua
+            level_manager.item_manager.commit_level_items()
+
+            # lưu fruit đã chốt
+            save.set_fruits(
+                level_manager.item_manager.export_data()
+            )
+
+            # lưu level đã hoàn thành
+            completed_level = level_manager.current_level - 1
+            save.complete_level(completed_level)
+
+            level_manager.level_completed = False
 
         world.fill((20, 20, 25))
         level_manager.draw(world)
 
         draw_scaled_world()
         hud.draw(screen)
+
 
     pygame.display.flip()
 

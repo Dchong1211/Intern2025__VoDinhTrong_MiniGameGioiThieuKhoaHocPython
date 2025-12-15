@@ -41,6 +41,10 @@ class Player:
         self.jump_count = 0
         self.on_ground = False
 
+        # ===== DROP THROUGH (ONE WAY) =====
+        self.drop_timer = 0
+        self.drop_duration = 12  # frame
+
         # ===== GROUND BUFFER =====
         self.ground_buffer = 0
         self.ground_buffer_time = 4
@@ -49,7 +53,7 @@ class Player:
         self.on_wall = False
         self.wall_dir = 0
 
-        # ===== DASH (FULL FIX) =====
+        # ===== DASH =====
         self.dash_force = 10
         self.dash_time = 8
         self.dash_timer = 0
@@ -64,7 +68,6 @@ class Player:
     # ====================================================
     def _handle_input(self, keys):
 
-        # ❌ KHÓA INPUT KHI DASH
         if self.dash_timer > 0:
             return
 
@@ -79,6 +82,10 @@ class Player:
         elif right and self.skills.move:
             self.vel_x = self.speed
             self.facing_right = True
+
+        # ---- DROP DOWN ----
+        if keys[pygame.K_s]:
+            self.drop_timer = self.drop_duration
 
         # ---- JUMP ----
         space = keys[pygame.K_SPACE]
@@ -113,11 +120,15 @@ class Player:
         self.dash_key_down = shift
 
     # ====================================================
-    def update(self, dt, keys, tiles):
+    def update(self, dt, keys, tiles, one_way_platforms):
 
         self._handle_input(keys)
 
-        # ===== GRAVITY (OFF WHEN DASH) =====
+        # ===== DROP TIMER =====
+        if self.drop_timer > 0:
+            self.drop_timer -= 1
+
+        # ===== GRAVITY =====
         if self.dash_timer <= 0:
             self.vel_y += self.gravity
             self.vel_y = min(self.vel_y, self.max_fall_speed)
@@ -141,9 +152,11 @@ class Player:
                     self.wall_dir = -1
 
         # ===== MOVE Y =====
+        prev_bottom = self.rect.bottom
         self.rect.y += self.vel_y
         self.on_ground = False
 
+        # ---- COLLISION CỨNG ----
         for t in tiles:
             if self.rect.colliderect(t):
                 if self.vel_y > 0:
@@ -157,6 +170,17 @@ class Player:
                     self.rect.top = t.bottom
                     self.vel_y = 0
 
+        # ---- ONE WAY PLATFORM ----
+        if self.vel_y > 0 and self.drop_timer <= 0:
+            for p in one_way_platforms:
+                if self.rect.colliderect(p):
+                    if prev_bottom <= p.top:
+                        self.rect.bottom = p.top
+                        self.vel_y = 0
+                        self.on_ground = True
+                        self.jump_count = 0
+                        self.can_dash = True
+
         # ===== GROUND BUFFER =====
         if self.on_ground:
             self.ground_buffer = self.ground_buffer_time
@@ -165,7 +189,7 @@ class Player:
 
         grounded = self.ground_buffer > 0
 
-        # ===== WALL SLIDE (OFF WHEN DASH) =====
+        # ===== WALL SLIDE =====
         wall_sliding = (
             self.on_wall and not grounded
             and self.vel_y > 0
@@ -180,21 +204,15 @@ class Player:
         if self.dash_timer > 0:
             self.dash_timer -= 1
 
-        # ===== STATE MACHINE =====
+        # ===== STATE =====
         if self.dash_timer > 0:
             self.state = "dash"
-
         elif grounded:
             self.state = "run" if self.vel_x != 0 else "idle"
-
         elif wall_sliding:
             self.state = "slide"
-
         else:
-            if self.vel_y < 0:
-                self.state = "double" if self.jump_count == 2 else "jump"
-            else:
-                self.state = "fall"
+            self.state = "jump" if self.vel_y < 0 else "fall"
 
         # ===== ANIMATION =====
         new_anim = self.animations[self.state]

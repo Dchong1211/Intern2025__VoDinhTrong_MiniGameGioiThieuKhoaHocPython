@@ -24,7 +24,7 @@ class Checkpoint:
         )
 
         # ===== STATE =====
-        self.state = "NO_FLAG"
+        self.state = "NO_FLAG"        # NO_FLAG | ACTIVATING | ACTIVE
         self.frames = None
         self.frame_index = 0
 
@@ -44,12 +44,26 @@ class Checkpoint:
 
     # ======================================================
     def activate(self):
+        """Gọi khi player chạm checkpoint lần đầu"""
         if self.state == "NO_FLAG":
             self.state = "ACTIVATING"
             self.frames = self.active_frames
             self.frame_index = 0
             self.anim_timer = 0
             self.finished = False
+
+    # ======================================================
+    def force_active(self):
+        """
+        Gọi khi level đã hoàn thành từ trước
+        -> không chạy animation dựng cờ
+        -> vào thẳng idle
+        """
+        self.state = "ACTIVE"
+        self.frames = self.idle_frames
+        self.frame_index = 0
+        self.anim_timer = 0
+        self.finished = True
 
     # ======================================================
     def update(self, dt):
@@ -61,7 +75,7 @@ class Checkpoint:
                 self.frame_index += 1
 
                 if self.frame_index >= len(self.frames):
-                    # animation xong
+                    # animation dựng cờ xong
                     self.state = "ACTIVE"
                     self.frames = self.idle_frames
                     self.frame_index = 0
@@ -81,7 +95,7 @@ class Checkpoint:
     # ======================================================
     def draw(self, surf):
         if self.state == "NO_FLAG":
-            surf.blit(self.no_flag, (self.rect.x, self.rect.y))
+            surf.blit(self.no_flag, self.rect.topleft)
         else:
             image = self.frames[self.frame_index]
-            surf.blit(image, (self.rect.x, self.rect.y))
+            surf.blit(image, self.rect.topleft)
