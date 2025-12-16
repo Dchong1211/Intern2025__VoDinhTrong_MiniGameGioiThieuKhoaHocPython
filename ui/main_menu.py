@@ -6,7 +6,7 @@ class MainMenu:
     def __init__(self):
         # ===== BACKGROUND =====
         self.bg = pygame.image.load(
-            "assets/Background/Background_menu.png"
+            "assets/Background/Menu/Background_menu.png"
         ).convert()
 
         # ===== BUTTON IMAGE =====

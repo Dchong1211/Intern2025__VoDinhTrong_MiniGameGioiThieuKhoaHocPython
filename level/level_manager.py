@@ -51,7 +51,7 @@ class LevelManager:
         self.objective = LevelObjective()
 
         # ===== BACKGROUND RANDOM =====
-        self.bg_folder = "assets/Background"
+        self.bg_folder = "assets/Background/Level"
         self.bg_files = [
             f for f in os.listdir(self.bg_folder)
             if f.endswith(".png")
@@ -104,8 +104,6 @@ class LevelManager:
             self.map_h,
             speed=40
         )
-
-        print(f"🎨 Background: {bg_name}")
 
         # ===== MAP SURFACE =====
         self.map_surface = pygame.Surface(
