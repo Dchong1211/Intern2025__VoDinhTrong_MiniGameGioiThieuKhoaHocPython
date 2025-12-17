@@ -51,7 +51,7 @@ class LevelSelect:
 
         # ================= BACK BUTTON =================
         self.btn_back = pygame.image.load(
-            "assets/Menu/Buttons/Back.png"
+            "assets/Menu/Buttons/Home.png"
         ).convert_alpha()
         self.btn_back = pygame.transform.scale(
             self.btn_back, (64, 64)

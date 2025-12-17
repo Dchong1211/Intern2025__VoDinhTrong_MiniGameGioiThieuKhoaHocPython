@@ -8,23 +8,29 @@ class HUD:
         self.objective = objective
         self.font_path = "assets/Font/FVF Fernando 08.ttf"
 
-        # 🔥 bật / tắt mission (phím J)
         self.show_objectives = True
 
+        # ================= FRUIT ICON =================
         base = "assets/Items/Fruits"
         self.icons = {}
 
-        # ===== LOAD ICON (FRAME ĐẦU) =====
         for name in self.item_manager.count:
             sheet = pygame.image.load(
                 os.path.join(base, f"{name}.png")
             ).convert_alpha()
 
-            icon = sheet.subsurface((0, 0, 32, 32))
-            icon = pygame.transform.scale(icon, (56, 56))
-            self.icons[name] = icon
+            frame = sheet.subsurface((0, 0, 32, 32))
+            frame = pygame.transform.scale(frame, (56, 56))
+            self.icons[name] = frame
 
-    # ======================================
+        # ================= SETTINGS ICON =================
+        self.setting_icon = pygame.image.load(
+            "assets/Menu/Buttons/Settings.png"
+        ).convert_alpha()
+
+        self.setting_rect = None
+
+    # ==================================================
     def render_text_outline(self, text, font, color, outline, thickness):
         base = font.render(text, True, color)
         w, h = base.get_size()
@@ -45,9 +51,8 @@ class HUD:
         surf.blit(base, (thickness, thickness))
         return surf
 
-    # ======================================
+    # ==================================================
     def draw_inventory(self, surf):
-        """Inventory bên phải"""
         sw, sh = surf.get_size()
         ui_scale = sh / 720
 
@@ -61,8 +66,6 @@ class HUD:
         spacing = int(92 * ui_scale)
 
         for name, icon in self.icons.items():
-
-            # chưa discovered → không hiện
             if not self.item_manager.discovered.get(name, False):
                 continue
 
@@ -93,27 +96,23 @@ class HUD:
 
             x -= spacing
 
-    # ======================================
+    # ==================================================
     def draw_objectives(self, surf):
         if not self.objective or not self.objective.objectives:
             return
 
-        # ===== UI SCALE (CHO TRẺ EM) =====
         font_title = pygame.font.Font(self.font_path, 18)
         font_item = pygame.font.Font(self.font_path, 14)
 
-        x = 16
-        y = 16
         padding = 10
         line_spacing = 6
         outline = 2
 
-        icon_size = 64 
+        icon_size = 42
         icon_gap = 8
 
         rendered_lines = []
 
-        # ===== TITLE =====
         title = self.render_text_outline(
             "MISSION",
             font_title,
@@ -123,7 +122,6 @@ class HUD:
         )
         rendered_lines.append((title, None))
 
-        # ===== OBJECTIVES =====
         for name, data in self.objective.objectives.items():
             collected = data["collected"]
             required = data["required"]
@@ -148,50 +146,71 @@ class HUD:
 
             rendered_lines.append((text, icon))
 
-        # ===== TÍNH KÍCH THƯỚC KHUNG (CHUẨN, KHÔNG TRÀN) =====
         max_width = 0
         total_height = 0
 
         for text, icon in rendered_lines:
-            line_width = text.get_width()
+            w = text.get_width()
             if icon:
-                line_width += icon_gap + icon.get_width()
-
-            max_width = max(max_width, line_width)
+                w += icon_gap + icon.get_width()
+            max_width = max(max_width, w)
             total_height += text.get_height() + line_spacing
 
-        box_width = max_width + padding * 2
-        box_height = total_height + padding * 2
+        box_w = max_width + padding * 2
+        box_h = total_height + padding * 2
 
-        # ===== NỀN ĐEN MỜ =====
-        bg = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+        # 👉 GÓC TRÊN TRÁI
+        x = 16
+        y = 16
+
+        bg = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
         bg.fill((0, 0, 0, 160))
         surf.blit(bg, (x, y))
 
         draw_y = y + padding
 
-        # ===== TITLE (CĂN GIỮA) =====
         title_text, _ = rendered_lines[0]
-        title_x = x + (box_width - title_text.get_width()) // 2
-        surf.blit(title_text, (title_x, draw_y))
+        surf.blit(
+            title_text,
+            (
+                x + (box_w - title_text.get_width()) // 2,
+                draw_y
+            )
+        )
         draw_y += title_text.get_height() + line_spacing
 
-        # ===== OBJECTIVE LINES =====
         for text, icon in rendered_lines[1:]:
             surf.blit(text, (x + padding, draw_y))
 
             if icon:
-                icon_x = x + padding + text.get_width() + icon_gap
-                icon_y = draw_y + (text.get_height() - icon.get_height()) // 2
-                surf.blit(icon, (icon_x, icon_y))
+                surf.blit(
+                    icon,
+                    (
+                        x + padding + text.get_width() + icon_gap,
+                        draw_y + (text.get_height() - icon.get_height()) // 2
+                    )
+                )
 
             draw_y += text.get_height() + line_spacing
 
-    # ======================================
+    # ==================================================
+    def draw_settings_icon(self, surf):
+        sw, sh = surf.get_size()
+        size = 48
+
+        icon = pygame.transform.scale(self.setting_icon, (size, size))
+
+        # 👉 GÓC DƯỚI TRÁI
+        x = 16
+        y = sh - size - 16
+
+        surf.blit(icon, (x, y))
+        self.setting_rect = pygame.Rect(x, y, size, size)
+
+    # ==================================================
     def draw(self, surf):
-        # mission bên trái (có thể bật / tắt bằng phím J)
         if self.show_objectives:
             self.draw_objectives(surf)
 
-        # inventory bên phải (luôn hiện)
         self.draw_inventory(surf)
+        self.draw_settings_icon(surf)

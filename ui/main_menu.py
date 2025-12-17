@@ -11,7 +11,7 @@ class MainMenu:
 
         # ===== BUTTON IMAGE =====
         self.play_img_raw = pygame.image.load(
-            "assets/Menu/Buttons/Play.png"
+            "assets/Menu/Buttons/Play_Text.png"
         ).convert_alpha()
 
         # ===== FONT =====
@@ -69,7 +69,7 @@ class MainMenu:
         screen.blit(title_fruit, (title_x + title_code.get_width(), title_y))
 
         # ===== PLAY BUTTON =====
-        btn_width = int(sw * 0.04)  # chỉnh size tại đây
+        btn_width = int(sw * 0.15)  # chỉnh size tại đây
         ratio = btn_width / self.play_img_raw.get_width()
         btn_height = int(self.play_img_raw.get_height() * ratio)
 

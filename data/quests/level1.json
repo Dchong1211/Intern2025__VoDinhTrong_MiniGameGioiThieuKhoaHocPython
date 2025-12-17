@@ -1,0 +1,13 @@
+{
+  "id": "level1_quest",
+  "text": "Kỹ năng nào cho phép nhân vật nhảy lần hai?",
+  "choices": {
+    "A": "Dash",
+    "B": "Double Jump",
+    "C": "Wall Slide",
+    "D": "Không có kỹ năng nào"
+  },
+  "answer": "B",
+  "key_quest": true,
+  "unlock_skill": "double_jump"
+}

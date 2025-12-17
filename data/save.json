@@ -1,23 +1,23 @@
 {
     "fruits": {
         "count": {
-            "Apple": 1,
+            "Apple": 12,
             "Bananas": 0,
-            "Cherries": 0,
+            "Cherries": 6,
             "Kiwi": 0,
             "Melon": 0,
-            "Orange": 0,
-            "Pineapple": 0,
+            "Orange": 12,
+            "Pineapple": 6,
             "Strawberry": 0
         },
         "discovered": {
             "Apple": true,
             "Bananas": false,
-            "Cherries": false,
+            "Cherries": true,
             "Kiwi": false,
             "Melon": false,
-            "Orange": false,
-            "Pineapple": false,
+            "Orange": true,
+            "Pineapple": true,
             "Strawberry": false
         }
     },
