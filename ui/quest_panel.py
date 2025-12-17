@@ -147,8 +147,8 @@ class QuestPanel:
         size = int(base * 0.04)
 
         # offset theo tỉ lệ board (ổn khi F11)
-        offset_x = int(base * 0.03)   # dịch vào trái
-        offset_y = int(base * 0.03)   # dịch xuống
+        offset_x = int(base * 0.045)   # dịch vào trái
+        offset_y = int(base * 0.05)   # dịch xuống
 
         close_img = pygame.transform.smoothscale(
             self.icon_close, (size, size)

@@ -27,6 +27,7 @@ class Checkpoint:
         self.state = "NO_FLAG"   # NO_FLAG | WAIT_QUEST | ACTIVATING | ACTIVE
         self.frames = None
         self.frame_index = 0
+        self.player_inside = False
 
         self.anim_speed = 0.06
         self.anim_timer = 0

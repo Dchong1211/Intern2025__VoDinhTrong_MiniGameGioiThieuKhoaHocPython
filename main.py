@@ -153,7 +153,6 @@ while running:
             next_state = GameState.MENU
             transition.start_close()
             level_manager.request_go_home = False  # 🔥 CỰC KỲ QUAN TRỌNG
-            
         if level_manager.request_go_level_select:
             next_state = GameState.LEVEL_SELECT
             transition.start_close()
