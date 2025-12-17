@@ -16,7 +16,13 @@ from .level_objective import LevelObjective
 class LevelManager:
     def __init__(self, save):
         self.save = save
-        self.completed_level_id = None
+
+        # ===== FLAGS CHO MAIN =====
+        self.request_go_home = False
+        self.request_go_level_select = False
+
+        # ===== QUEST UI =====
+        self.quest_panel = None
 
         # ===== LEVEL LIST =====
         self.levels = {
@@ -27,79 +33,80 @@ class LevelManager:
 
         self.current_level = 1
 
+        # ===== MAP =====
         self.tmx = None
         self.map_surface = None
-
         self.tw = 0
         self.th = 0
         self.map_w = 0
         self.map_h = 0
 
-        # ===== RUNTIME OBJECTS =====
+        # ===== OBJECTS =====
         self.player = None
         self.checkpoint = None
         self.collisions = []
         self.one_way_platforms = []
 
-        # ===== INVENTORY (GLOBAL) =====
+        # ===== INVENTORY (GLOBAL – LOAD 1 LẦN) =====
         self.item_manager = ItemManager()
-        self.item_manager.import_data(
-            self.save.get_fruits()
-        )
+        if not hasattr(save, "_fruit_loaded"):
+            self.item_manager.import_data(save.get_fruits())
+            save._fruit_loaded = True
 
         # ===== OBJECTIVE (PER LEVEL) =====
         self.objective = LevelObjective()
 
-        # ===== BACKGROUND RANDOM =====
+        # ===== BACKGROUND =====
         self.bg_folder = "assets/Background/Level"
         self.bg_files = [
             f for f in os.listdir(self.bg_folder)
             if f.endswith(".png")
         ]
         self.bg = None
-        self.last_bg = None
 
         # ===== STATE =====
         self.state = LevelState.PLAYING
         self.fade_alpha = 0
         self.fade_speed = 300
 
-        self.level_completed = False
-
         self.load_level(self.current_level)
+
+    # ======================================================
+    def is_level_completed(self, level_id):
+        """Level đã hoàn thành nếu level tiếp theo đã unlock"""
+        return self.save.is_level_unlocked(level_id + 1)
 
     # ======================================================
     def load_level(self, level_id):
         self.current_level = level_id
-        self.level_completed = False
+        self.state = LevelState.PLAYING
+        self.fade_alpha = 0
+        self.request_go_home = False
+        self.request_go_level_select = False
 
         self.tmx = load_pygame(self.levels[level_id])
 
         self.tw = self.tmx.tilewidth
         self.th = self.tmx.tileheight
-
         self.map_w = self.tmx.width * self.tw
         self.map_h = self.tmx.height * self.th
 
-        # ===== RESET =====
+        # ===== RESET OBJECTS =====
         self.player = None
         self.checkpoint = None
         self.collisions.clear()
         self.one_way_platforms.clear()
 
+        # ❗ reset item spawn (KHÔNG reset count)
         self.item_manager.clear_level_items()
 
-        # ===== RANDOM BACKGROUND =====
-        random.seed(self.current_level)  # 🔒 khóa theo level
+        # ===== BACKGROUND =====
+        random.seed(level_id)
         bg_name = random.choice(self.bg_files)
-        random.seed()  # mở lại random toàn cục
-
-
-        self.last_bg = bg_name
-        bg_path = os.path.join(self.bg_folder, bg_name)
+        random.seed()
 
         self.bg = ScrollingBackground(
-            bg_path,
+            os.path.join(self.bg_folder, bg_name),
             self.map_w,
             self.map_h,
             speed=40
@@ -114,11 +121,8 @@ class LevelManager:
         self._render_map()
         self._load_objects()
 
-        # ===== CHECKPOINT STATE THEO SAVE =====
-        if (
-            self.checkpoint
-            and self.save.is_level_unlocked(self.current_level + 1)
-        ):
+        # ✅ AUTO ACTIVE CHECKPOINT NẾU LEVEL ĐÃ QUA
+        if self.checkpoint and self.is_level_completed(level_id):
             self.checkpoint.force_active()
 
         if self.player is None:
@@ -166,73 +170,114 @@ class LevelManager:
         self.objective.generate(fruit_max)
 
     # ======================================================
+    # ================= QUEST CALLBACK =====================
+    # ======================================================
+    def on_quest_success(self):
+        self.save.save_fruits(self.item_manager.export_data())
+        if self.checkpoint:
+            self.checkpoint.activate()
+
+    def on_quest_failed(self):
+        # ❌ nếu replay level đã qua → KHÔNG PHẠT
+        if self.is_level_completed(self.current_level):
+            return
+
+        # ❌ phạt 10% random 1 loại
+        self.item_manager.punish_random_type_percent(0.1)
+        self.save.save_fruits(self.item_manager.export_data())
+
+    def go_home(self):
+        self.request_go_home = True
+
+    def go_level_select(self):
+        self.request_go_level_select = True
+
+    def restart_level(self):
+        self.load_level(self.current_level)
+
+    # ======================================================
+    # ================= UPDATE =============================
+    # ======================================================
     def update(self, dt, keys):
 
-        # ===== BACKGROUND =====
         if self.bg:
             self.bg.update(dt)
+        # ===== UPDATE CHECKPOINT LUÔN LUÔN =====
+        if self.checkpoint:
+            self.checkpoint.update(dt)
 
-        # ===== PLAYER + ITEM UPDATE =====
-        if self.state in (
-            LevelState.PLAYING,
-            LevelState.CHECKPOINT_ANIM,
-            LevelState.FADING_OUT,
-            LevelState.FADING_IN
-        ):
+        # ===== LOCK PLAYER KHI QUEST =====
+        if self.quest_panel and self.quest_panel.visible:
+            return
+
+
+        # ===== PLAYER =====
+        if self.state == LevelState.PLAYING:
             self.player.update(
-                dt,
-                keys,
+                dt, keys,
                 self.collisions,
                 self.one_way_platforms
             )
 
             self.item_manager.update(
                 self.player,
-                self.save,
-                self.objective
+                objective=self.objective
             )
 
-        # =============== PLAYING =================
-        if self.state == LevelState.PLAYING:
-            if (
-                self.checkpoint
-                and self.player.rect.colliderect(self.checkpoint.rect)
-            ):
-                if not self.objective.is_completed():
+        # ================= PLAYING =================
+        if self.state == LevelState.PLAYING and self.checkpoint:
+
+            # 🔥 FIX QUAN TRỌNG: KHÔNG CHO objective ghi đè active
+            if self.checkpoint.active:
+                self.checkpoint.ready = True
+            else:
+                self.checkpoint.ready = self.objective.is_completed()
+
+            if self.player.rect.colliderect(self.checkpoint.rect):
+
+                if not self.checkpoint.ready:
                     return
 
-                self.checkpoint.activate()
+                # ===== CHƯA ACTIVE =====
+                if not self.checkpoint.active:
+
+                    # ✅ replay → bỏ quest
+                    if self.is_level_completed(self.current_level):
+                        self.checkpoint.activate()
+                        self.state = LevelState.CHECKPOINT_ANIM
+                        return
+
+                    # ❗ lần đầu → mở quest
+                    if self.quest_panel:
+                        self.checkpoint.on_player_touch(self.quest_panel)
+                    return
+
                 self.state = LevelState.CHECKPOINT_ANIM
 
-        # =============== CHECKPOINT =================
+        # ================= CHECKPOINT ANIM =================
         elif self.state == LevelState.CHECKPOINT_ANIM:
             self.checkpoint.update(dt)
             if self.checkpoint.animation_finished():
                 self.state = LevelState.FADING_OUT
 
-        # =============== FADE OUT =================
+        # ================= FADE OUT =================
         elif self.state == LevelState.FADING_OUT:
             self.fade_alpha += self.fade_speed * dt
             if self.fade_alpha >= 255:
                 self.fade_alpha = 255
                 self.state = LevelState.LOADING
 
-        # =============== LOAD NEXT LEVEL =================
+        # ================= LOAD NEXT =================
         elif self.state == LevelState.LOADING:
-            self.completed_level_id = self.current_level
-            self.level_completed = True
-
             next_level = self.current_level + 1
-
             if next_level in self.levels:
                 self.save.unlock_level(next_level)
                 self.load_level(next_level)
                 self.state = LevelState.FADING_IN
             else:
-                print("🎉 GAME COMPLETE")
                 self.state = LevelState.PLAYING
 
-        # =============== FADE IN =================
+        # ================= FADE IN =================
         elif self.state == LevelState.FADING_IN:
             self.fade_alpha -= self.fade_speed * dt
             if self.fade_alpha <= 0:
@@ -242,14 +287,10 @@ class LevelManager:
     # ======================================================
     def draw(self, surf):
 
-        # ===== BACKGROUND =====
         if self.bg:
             self.bg.draw(surf)
 
-        # ===== MAP =====
         surf.blit(self.map_surface, (0, 0))
-
-        # ===== OBJECTS =====
         self.item_manager.draw(surf)
 
         if self.checkpoint:
@@ -257,7 +298,6 @@ class LevelManager:
 
         self.player.draw(surf)
 
-        # ===== FADE =====
         if self.fade_alpha > 0:
             fade = pygame.Surface((self.map_w, self.map_h))
             fade.fill((0, 0, 0))

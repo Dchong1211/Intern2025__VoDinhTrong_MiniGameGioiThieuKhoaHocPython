@@ -23,15 +23,19 @@ class Checkpoint:
             64, 64
         )
 
-        # ===== STATE =====
-        self.state = "NO_FLAG"        # NO_FLAG | ACTIVATING | ACTIVE
+        # ===== VISUAL STATE =====
+        self.state = "NO_FLAG"   # NO_FLAG | WAIT_QUEST | ACTIVATING | ACTIVE
         self.frames = None
         self.frame_index = 0
 
-        self.anim_speed = 0.05
+        self.anim_speed = 0.06
         self.anim_timer = 0
-
         self.finished = False
+
+        # ===== LOGIC STATE =====
+        self.ready = False        # objective đã xong chưa
+        self.active = False       # checkpoint đã active chưa
+        self.waiting_quest = False
 
     # ======================================================
     def load_sheet(self, path, fw, fh):
@@ -43,27 +47,54 @@ class Checkpoint:
         return frames
 
     # ======================================================
+    def on_player_touch(self, quest_panel):
+        """
+        Gọi khi player chạm checkpoint
+        """
+        # ❌ nếu chưa đủ điều kiện
+        if not self.ready:
+            return
+
+        # ❌ nếu đã active thì khỏi hỏi quest
+        if self.active:
+            return
+
+        # mở quest
+        if not self.waiting_quest:
+            self.waiting_quest = True
+            self.state = "WAIT_QUEST"
+            quest_panel.open()
+
+    # ======================================================
     def activate(self):
-        """Gọi khi player chạm checkpoint lần đầu"""
-        if self.state == "NO_FLAG":
-            self.state = "ACTIVATING"
-            self.frames = self.active_frames
-            self.frame_index = 0
-            self.anim_timer = 0
-            self.finished = False
+        """
+        Gọi KHI TRẢ LỜI ĐÚNG QUEST
+        """
+        if self.active:
+            return
+
+        self.active = True
+        self.ready = True               # 🔥 CỰC KỲ QUAN TRỌNG
+        self.state = "ACTIVATING"
+        self.frames = self.active_frames
+        self.frame_index = 0
+        self.anim_timer = 0
+        self.finished = False
+        self.waiting_quest = False
 
     # ======================================================
     def force_active(self):
         """
-        Gọi khi level đã hoàn thành từ trước
-        -> không chạy animation dựng cờ
-        -> vào thẳng idle
+        Level đã hoàn thành từ trước → chơi lại
         """
+        self.active = True
+        self.ready = True               # 🔥 FIX LỖI ĐỨNG YÊN
         self.state = "ACTIVE"
         self.frames = self.idle_frames
         self.frame_index = 0
         self.anim_timer = 0
         self.finished = True
+        self.waiting_quest = False
 
     # ======================================================
     def update(self, dt):
@@ -75,14 +106,12 @@ class Checkpoint:
                 self.frame_index += 1
 
                 if self.frame_index >= len(self.frames):
-                    # animation dựng cờ xong
                     self.state = "ACTIVE"
                     self.frames = self.idle_frames
                     self.frame_index = 0
                     self.finished = True
 
         elif self.state == "ACTIVE":
-            # idle animation loop
             self.anim_timer += dt
             if self.anim_timer >= self.anim_speed:
                 self.anim_timer = 0
@@ -94,8 +123,7 @@ class Checkpoint:
 
     # ======================================================
     def draw(self, surf):
-        if self.state == "NO_FLAG":
+        if self.state in ("NO_FLAG", "WAIT_QUEST"):
             surf.blit(self.no_flag, self.rect.topleft)
         else:
-            image = self.frames[self.frame_index]
-            surf.blit(image, self.rect.topleft)
+            surf.blit(self.frames[self.frame_index], self.rect.topleft)

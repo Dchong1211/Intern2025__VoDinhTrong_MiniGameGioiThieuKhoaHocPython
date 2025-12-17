@@ -12,7 +12,9 @@ class Player:
         BASE = "assets/Main Characters/Virtual Guy"
 
         def load(name):
-            return pygame.image.load(os.path.join(BASE, name)).convert_alpha()
+            return pygame.image.load(
+                os.path.join(BASE, name)
+            ).convert_alpha()
 
         self.animations = {
             "idle":   Animation(load("Idle.png"), 32, 32, 0.25),
@@ -40,10 +42,11 @@ class Player:
         self.jump_key_down = False
         self.jump_count = 0
         self.on_ground = False
+        self.is_double_jumping = False   # FLAG QUAN TRỌNG
 
         # ===== DROP THROUGH (ONE WAY) =====
         self.drop_timer = 0
-        self.drop_duration = 12  # frame
+        self.drop_duration = 12
 
         # ===== GROUND BUFFER =====
         self.ground_buffer = 0
@@ -92,17 +95,25 @@ class Player:
         pressed = space and not self.jump_key_down
 
         if pressed:
+            # WALL JUMP
             if self.on_wall and not self.on_ground and self.skills.wall_jump:
                 self.vel_y = self.jump_force
                 self.vel_x = 6 * (-self.wall_dir)
                 self.jump_count = 1
+                self.is_double_jumping = False
+
             else:
+                # JUMP 1
                 if self.jump_count == 0 and self.skills.jump:
                     self.vel_y = self.jump_force
                     self.jump_count = 1
+                    self.is_double_jumping = False
+
+                # DOUBLE JUMP
                 elif self.jump_count == 1 and self.skills.double_jump:
                     self.vel_y = self.jump_force
                     self.jump_count = 2
+                    self.is_double_jumping = True   # BẬT FLAG
 
         self.jump_key_down = space
 
@@ -136,6 +147,10 @@ class Player:
             self.vel_y = 0
             self.vel_x = self.dash_force * self.dash_dir
 
+        # >>> FIX QUAN TRỌNG: KẾT THÚC DOUBLE JUMP KHI BẮT ĐẦU RƠI <<<
+        if self.is_double_jumping and self.vel_y >= 0:
+            self.is_double_jumping = False
+
         # ===== MOVE X =====
         self.rect.x += self.vel_x
         self.on_wall = False
@@ -164,6 +179,7 @@ class Player:
                     self.vel_y = 0
                     self.on_ground = True
                     self.jump_count = 0
+                    self.is_double_jumping = False
                     self.can_dash = True
                     self.dash_timer = 0
                 elif self.vel_y < 0:
@@ -179,6 +195,7 @@ class Player:
                         self.vel_y = 0
                         self.on_ground = True
                         self.jump_count = 0
+                        self.is_double_jumping = False
                         self.can_dash = True
 
         # ===== GROUND BUFFER =====
@@ -204,23 +221,29 @@ class Player:
         if self.dash_timer > 0:
             self.dash_timer -= 1
 
-        # ===== STATE =====
+        # ===== STATE MACHINE =====
         if self.dash_timer > 0:
             self.state = "dash"
+
         elif grounded:
             self.state = "run" if self.vel_x != 0 else "idle"
+
         elif wall_sliding:
             self.state = "slide"
-        else:
-            self.state = "jump" if self.vel_y < 0 else "fall"
 
-        # ===== ANIMATION =====
+        else:
+            if self.is_double_jumping:
+                self.state = "double"
+            else:
+                self.state = "jump" if self.vel_y < 0 else "fall"
+
+        # ===== ANIMATION UPDATE =====
         new_anim = self.animations[self.state]
         if new_anim != self.current_anim:
             self.current_anim = new_anim
             self.current_anim.reset()
-        else:
-            self.current_anim.update()
+
+        self.current_anim.update()
 
     # ====================================================
     def draw(self, surf):

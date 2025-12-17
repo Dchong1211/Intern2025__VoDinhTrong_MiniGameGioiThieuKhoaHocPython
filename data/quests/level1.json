@@ -1,6 +1,6 @@
 {
   "id": "level1_quest",
-  "text": "Kỹ năng nào cho phép nhân vật nhảy lần hai?",
+  "question": "Kỹ năng nào cho phép nhân vật nhảy lần hai?",
   "choices": {
     "A": "Dash",
     "B": "Double Jump",

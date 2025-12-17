@@ -9,6 +9,11 @@ from ui.level_select import LevelSelect
 from data.save_manager import SaveManager
 from ui.square_transition import SquareTransition
 
+# ===== QUEST SYSTEM =====
+from level.quest_manager import QuestManager
+from player.skills import Skills
+from ui.quest_panel import QuestPanel
+
 pygame.init()
 
 # ================= WINDOW =================
@@ -31,8 +36,11 @@ state = GameState.MENU
 next_state = None
 next_level = None
 
+# ================= UI =================
 menu = MainMenu()
 level_select = LevelSelect(save)
+
+# ================= LEVEL =================
 level_manager = LevelManager(save)
 
 # ================= WORLD =================
@@ -45,8 +53,13 @@ hud = HUD(
     level_manager.objective
 )
 
+# ================= QUEST =================
+quest_panel = None
+skills = None
+
 # ================= TRANSITION =================
 transition = SquareTransition(screen.get_size())
+
 
 # ==================================================
 def draw_scaled_world():
@@ -57,7 +70,7 @@ def draw_scaled_world():
     scaled = pygame.transform.scale(world, (draw_w, sh))
     x = (sw - draw_w) // 2
 
-    screen.fill((0, 0, 0))          # clear full screen
+    screen.fill((0, 0, 0))
     screen.blit(scaled, (x, 0))
 
 
@@ -90,6 +103,10 @@ while running:
             elif event.key == pygame.K_j:
                 hud.show_objectives = not hud.show_objectives
 
+        # ===== QUEST INPUT (UI ONLY) =====
+        if state == GameState.PLAYING and quest_panel:
+            quest_panel.handle_event(event)
+
     # ================= MENU =================
     if state == GameState.MENU:
         screen.fill((0, 0, 0))
@@ -117,13 +134,30 @@ while running:
     elif state == GameState.PLAYING:
         keys = pygame.key.get_pressed()
 
+        # ===== UPDATE GAME LOGIC =====
         level_manager.update(dt, keys)
 
+        # ===== DRAW WORLD =====
         world.fill((20, 20, 25))
         level_manager.draw(world)
 
         draw_scaled_world()
         hud.draw(screen)
+
+        # ===== QUEST PANEL OVERLAY =====
+        if quest_panel:
+            quest_panel.draw(screen)
+
+        # ===== LEVEL MANAGER YÊU CẦU VỀ HOME =====
+        if level_manager.request_go_home:
+            next_state = GameState.MENU
+            transition.start_close()
+            level_manager.request_go_home = False  # 🔥 CỰC KỲ QUAN TRỌNG
+            
+        if level_manager.request_go_level_select:
+            next_state = GameState.LEVEL_SELECT
+            transition.start_close()
+            level_manager.request_go_level_select = False
 
     # ================= TRANSITION =================
     transition.update(dt)
@@ -133,18 +167,34 @@ while running:
         state = next_state
 
         if state == GameState.PLAYING and next_level is not None:
+            # ===== LOAD LEVEL =====
             level_manager.load_level(next_level)
+
             hud = HUD(
                 level_manager.item_manager,
                 level_manager.objective
             )
+
+            # ===== INIT QUEST SYSTEM =====
+            skills = Skills()
+
+            quest_path = f"data/quests/level{next_level}.json"
+            quest_manager = QuestManager(quest_path)
+
+
+            quest_panel = QuestPanel(
+                quest_manager,
+                skills,
+                level_manager
+            )
+
+            level_manager.quest_panel = quest_panel
             next_level = None
 
         next_state = None
         transition.start_open()
 
     transition.draw(screen)
-
     pygame.display.flip()
 
 pygame.quit()

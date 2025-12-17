@@ -1,4 +1,5 @@
 from items.item import Item
+import random
 
 
 class ItemManager:
@@ -17,11 +18,12 @@ class ItemManager:
             "Strawberry": 0,
         }
 
-        # ===== TRÁI ĐÃ PHÁT HIỆN CHƯA =====
+        # ===== TRÁI ĐÃ PHÁT HIỆN =====
         self.discovered = {k: False for k in self.count}
 
     # ======================================
     def clear_level_items(self):
+        """Xoá item spawn trong level (KHÔNG reset count)"""
         self.items.clear()
 
     # ======================================
@@ -40,7 +42,6 @@ class ItemManager:
                     self.count[item.name] += 1
                     self.discovered[item.name] = True
 
-                    # 🔥 báo đúng loại fruit cho objective
                     if objective:
                         objective.add(item.name, 1)
 
@@ -49,7 +50,6 @@ class ItemManager:
 
             if item.dead:
                 self.items.remove(item)
-
 
     # ======================================
     def draw(self, surf):
@@ -74,3 +74,25 @@ class ItemManager:
 
             if "discovered" in data and k in data["discovered"]:
                 self.discovered[k] = data["discovered"][k]
+
+    # ======================================
+    def punish_random_type(self, percent: float = 0.1):
+        """
+        Trừ 10% của MỘT LOẠI quả NGẪU NHIÊN đang có
+        """
+        candidates = [
+            name for name, value in self.count.items()
+            if value > 0
+        ]
+
+        if not candidates:
+            return  # không có quả thì thôi
+
+        fruit = random.choice(candidates)
+
+        lost = max(1, int(self.count[fruit] * percent))
+        self.count[fruit] -= lost
+
+        # không cho âm
+        if self.count[fruit] < 0:
+            self.count[fruit] = 0
