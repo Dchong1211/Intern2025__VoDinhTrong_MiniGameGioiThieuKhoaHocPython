@@ -3,18 +3,24 @@ import os
 
 
 class SaveManager:
-    def __init__(self):
-        self.path = "data/save.json"
-        self.data = {
+    def __init__(self, path="data/save.json"):
+        self.path = path
+        self.data = self._default_data()
+        self._ensure_dir()
+        self.load()
+
+    # ================= CORE =================
+    def _default_data(self):
+        return {
             "fruits": {},
             "levels": {
                 "unlocked": [1]
             }
         }
 
-        self.load()
+    def _ensure_dir(self):
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
 
-    # ======================================
     def load(self):
         if not os.path.exists(self.path):
             self.save()
@@ -22,53 +28,41 @@ class SaveManager:
 
         try:
             with open(self.path, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-
-                if not content:
-                    raise ValueError("Empty save file")
-
-                self.data = json.loads(content)
-
-        except (json.JSONDecodeError, ValueError):
-            print("⚠️ Save file corrupted or empty → reset save")
-
-            self.data = {
-                "fruits": {},
-                "levels": {
-                    "unlocked": [1]
-                }
-            }
+                self.data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            self.data = self._default_data()
             self.save()
 
-        # đảm bảo không thiếu key
-        self.data.setdefault("fruits", {})
-        self.data.setdefault("levels", {})
-        self.data["levels"].setdefault("unlocked", [1])
+        self._normalize()
 
-    # ======================================
     def save(self):
         with open(self.path, "w", encoding="utf-8") as f:
-            json.dump(self.data, f, indent=4)
+            json.dump(self.data, f, indent=4, ensure_ascii=False)
 
-    # ======================================
-    # ========== FRUITS ==========
-    def save_fruits(self, fruits_data):
-        self.data["fruits"] = fruits_data
+    def _normalize(self):
+        default = self._default_data()
+
+        for key, value in default.items():
+            self.data.setdefault(key, value)
+
+        self.data["levels"].setdefault("unlocked", [1])
+
+    # ================= FRUITS =================
+    def save_fruits(self, fruits):
+        self.data["fruits"] = fruits
         self.save()
 
     def get_fruits(self):
-        return self.data.get("fruits", {})
+        return self.data["fruits"]
 
-    # ======================================
-    # ========== LEVELS ==========
+    # ================= LEVELS =================
     def unlock_level(self, level_id):
         unlocked = self.data["levels"]["unlocked"]
 
         if level_id not in unlocked:
             unlocked.append(level_id)
             unlocked.sort()
-
-        self.save()
+            self.save()
 
     def is_level_unlocked(self, level_id):
         return level_id in self.data["levels"]["unlocked"]

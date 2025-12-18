@@ -1,8 +1,8 @@
 import pygame
-import os
+
 
 class ScrollingBackground:
-    def __init__(self, image_path, map_w, map_h, speed=30):
+    def __init__(self, image_path, map_w, map_h, speed=0):
         self.image = pygame.image.load(image_path).convert()
         self.tile_w = self.image.get_width()
         self.tile_h = self.image.get_height()
@@ -14,14 +14,14 @@ class ScrollingBackground:
         self.offset_y = 0
 
     def update(self, dt):
-        self.offset_y += self.speed * dt
+        if self.speed <= 0:
+            return
 
-        # loop khi vượt chiều cao tile
+        self.offset_y += self.speed * dt
         if self.offset_y >= self.tile_h:
             self.offset_y -= self.tile_h
 
     def draw(self, surf):
-        # lặp tile phủ kín map
         for y in range(
             -self.tile_h,
             self.map_h + self.tile_h,

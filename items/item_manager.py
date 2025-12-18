@@ -1,98 +1,82 @@
-from items.item import Item
 import random
+from items.item import Item
 
 
 class ItemManager:
+    FRUIT_TYPES = (
+        "Apple",
+        "Bananas",
+        "Cherries",
+        "Kiwi",
+        "Melon",
+        "Orange",
+        "Pineapple",
+        "Strawberry",
+    )
+
     def __init__(self):
-        self.items = []
+        self.items: list[Item] = []
 
-        # ===== SỐ LƯỢNG TRÁI =====
-        self.count = {
-            "Apple": 0,
-            "Bananas": 0,
-            "Cherries": 0,
-            "Kiwi": 0,
-            "Melon": 0,
-            "Orange": 0,
-            "Pineapple": 0,
-            "Strawberry": 0,
-        }
+        self.count = {name: 0 for name in self.FRUIT_TYPES}
+        self.discovered = {name: False for name in self.FRUIT_TYPES}
 
-        # ===== TRÁI ĐÃ PHÁT HIỆN =====
-        self.discovered = {k: False for k in self.count}
-
-    # ======================================
+    # ================= LEVEL =================
     def clear_level_items(self):
-        """Xoá item spawn trong level (KHÔNG reset count)"""
         self.items.clear()
 
-    # ======================================
     def add(self, x, y, name):
-        self.items.append(Item(x, y, name))
+        if name in self.count:
+            self.items.append(Item(x, y, name))
 
-    # ======================================
+    # ================= UPDATE =================
     def update(self, player, save_manager=None, objective=None):
-        for item in self.items[:]:
+        for item in self.items:
             item.update()
 
             if not item.collected and player.rect.colliderect(item.rect):
-                item.collect()
+                self._collect(item, save_manager, objective)
 
-                if item.name in self.count:
-                    self.count[item.name] += 1
-                    self.discovered[item.name] = True
+        self.items = [item for item in self.items if not item.dead]
 
-                    if objective:
-                        objective.add(item.name, 1)
+    def _collect(self, item, save_manager, objective):
+        item.collect()
 
-                    if save_manager:
-                        save_manager.save_fruits(self.export_data())
+        self.count[item.name] += 1
+        self.discovered[item.name] = True
 
-            if item.dead:
-                self.items.remove(item)
+        if objective:
+            objective.add(item.name, 1)
 
-    # ======================================
+        if save_manager:
+            save_manager.save_fruits(self.export_data())
+
+    # ================= DRAW =================
     def draw(self, surf):
         for item in self.items:
             item.draw(surf)
 
-    # ======================================
+    # ================= SAVE DATA =================
     def export_data(self):
         return {
-            "count": self.count,
-            "discovered": self.discovered
+            "count": self.count.copy(),
+            "discovered": self.discovered.copy()
         }
 
-    # ======================================
     def import_data(self, data):
         if not data:
             return
 
-        for k in self.count:
-            if "count" in data and k in data["count"]:
-                self.count[k] = data["count"][k]
+        for name in self.count:
+            self.count[name] = data.get("count", {}).get(name, 0)
+            self.discovered[name] = data.get("discovered", {}).get(name, False)
 
-            if "discovered" in data and k in data["discovered"]:
-                self.discovered[k] = data["discovered"][k]
+    # ================= PENALTY =================
+    def punish_random_type(self, percent=0.1):
+        available = [k for k, v in self.count.items() if v > 0]
+        if not available:
+            return
 
-    # ======================================
-    def punish_random_type(self, percent: float = 0.1):
-        """
-        Trừ 10% của MỘT LOẠI quả NGẪU NHIÊN đang có
-        """
-        candidates = [
-            name for name, value in self.count.items()
-            if value > 0
-        ]
-
-        if not candidates:
-            return  # không có quả thì thôi
-
-        fruit = random.choice(candidates)
-
+        fruit = random.choice(available)
         lost = max(1, int(self.count[fruit] * percent))
-        self.count[fruit] -= lost
 
-        # không cho âm
-        if self.count[fruit] < 0:
-            self.count[fruit] = 0
+        self.count[fruit] = max(0, self.count[fruit] - lost)

@@ -1,47 +1,27 @@
 import json
-import random
 
 
 class QuestManager:
     def __init__(self, json_path):
         with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            self.quest = json.load(f)
 
-        # Mỗi level chỉ có 1 quest
-        self.quest = data
-
-        self.used = False
-
-    # =========================
-    # CÂU HỎI
+    # ================= QUESTION =================
     def text(self):
         return self.quest.get("question", "")
 
-    # =========================
-    # ĐÁP ÁN (A, B, C, D)
+    # ================= CHOICES =================
     def choices(self):
-        """
-        Trả về dict:
-        {
-            "A": "...",
-            "B": "...",
-            "C": "...",
-            "D": "..."
-        }
-        """
         return self.quest.get("choices", {})
 
-    # =========================
-    # ĐÁP ÁN ĐÚNG
+    # ================= ANSWER =================
     def answer(self):
         return self.quest.get("answer", "A")
 
-    # =========================
-    # QUEST CÓ PHẢI CHỦ CHỐT KHÔNG
+    # ================= KEY QUEST =================
     def is_key(self):
         return self.quest.get("key", False)
 
-    # =========================
-    # KỸ NĂNG MỞ KHÓA
+    # ================= UNLOCK SKILL =================
     def unlock_skill(self):
-        return self.quest.get("unlock_skill", None)
+        return self.quest.get("unlock_skill")

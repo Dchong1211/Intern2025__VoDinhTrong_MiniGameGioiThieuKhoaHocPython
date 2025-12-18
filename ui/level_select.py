@@ -1,15 +1,19 @@
-import pygame
 import os
 import math
+import pygame
 
 from level.scrolling_background import ScrollingBackground
+from ui.button import Button
 
 
 class LevelSelect:
+    BASE_H = 720
+    FONT_PATH = "assets/Font/FVF Fernando 08.ttf"
+
     def __init__(self, save):
         self.save = save
 
-        # ================= LEVEL ICON =================
+        # ================= LEVEL DATA =================
         self.level_folder = "assets/Menu/Levels"
         self.level_icons = sorted(
             os.listdir(self.level_folder),
@@ -22,185 +26,242 @@ class LevelSelect:
             len(self.level_icons) / self.levels_per_page
         )
 
+        # ================= ICON CACHE =================
+        self.icon_cache = {
+            name: pygame.image.load(
+                os.path.join(self.level_folder, name)
+            ).convert_alpha()
+            for name in self.level_icons
+        }
+
         # ================= BACKGROUND =================
         self.bg_folder = "assets/Background/Level"
-        self.bg_files = sorted([
+        self.bg_files = [
             f for f in os.listdir(self.bg_folder)
             if f.endswith(".png")
-        ])
-
+        ]
         self.bg = None
-        self.load_bg_for_page()
+        self.bg_size = (0, 0)
 
-        # ================= BUTTON PREV / NEXT =================
-        self.btn_size = 64
-
-        self.btn_prev = pygame.image.load(
+        # ================= RAW NAV IMAGES =================
+        self.prev_raw = pygame.image.load(
             "assets/Menu/Buttons/Previous.png"
         ).convert_alpha()
-        self.btn_prev = pygame.transform.scale(
-            self.btn_prev, (self.btn_size, self.btn_size)
-        )
 
-        self.btn_next = pygame.image.load(
+        self.next_raw = pygame.image.load(
             "assets/Menu/Buttons/Next.png"
         ).convert_alpha()
-        self.btn_next = pygame.transform.scale(
-            self.btn_next, (self.btn_size, self.btn_size)
-        )
 
-        # ================= BACK BUTTON =================
-        self.btn_back = pygame.image.load(
+        self.home_raw = pygame.image.load(
             "assets/Menu/Buttons/Home.png"
         ).convert_alpha()
-        self.btn_back = pygame.transform.scale(
-            self.btn_back, (64, 64)
-        )
 
-        # ================= GRID =================
-        self.icon_size = 96
-        self.gap_x = 60
-        self.gap_y = 50
+        # ================= NAV BUTTONS =================
+        self.btn_prev = Button(self.prev_raw, ("center", "bottom"), (0, 0))
+        self.btn_next = Button(self.next_raw, ("center", "bottom"), (0, 0))
+        self.btn_back = Button(self.home_raw, ("left", "top"), (0, 0))
 
-        # ================= PAGE FONT =================
-        self.page_font = pygame.font.Font(
-            "assets/Font/FVF Fernando 08.ttf", 20
-        )
+        # ================= LEVEL BUTTONS =================
+        self.level_buttons = []
 
-    # ==================================================
-    def load_bg_for_page(self):
+        # ================= FONT =================
+        self.font = pygame.font.Font(self.FONT_PATH, 20)
+
+        # ================= RESIZE FLAG =================
+        self.need_rebuild = True
+
+    # =================================================
+    def on_resize(self, screen):
+        self.need_rebuild = True
+        self.level_buttons.clear()
+        self.bg_size = (0, 0)
+
+        # reset bounce state
+        for b in (self.btn_prev, self.btn_next, self.btn_back):
+            b.offset_y = 0
+            b.target_offset_y = 0
+            b.update_layout(screen)
+
+    # =================================================
+    def _load_background(self, screen_size):
         if not self.bg_files:
             self.bg = None
             return
 
-        index = self.current_page % len(self.bg_files)
-        bg_name = self.bg_files[index]
-        bg_path = os.path.join(self.bg_folder, bg_name)
+        sw, sh = screen_size
+        self.bg_size = (sw, sh)
 
+        bg = self.bg_files[self.current_page % len(self.bg_files)]
         self.bg = ScrollingBackground(
-            bg_path,
-            map_w=4000,
-            map_h=4000,
-            speed=0  # KHÔNG SCROLL
+            os.path.join(self.bg_folder, bg),
+            sw,
+            sh,
+            speed=0
         )
 
-    # ==================================================
-    def update(self, screen):
-        sw, sh = screen.get_size()
+    # =================================================
+    def _build_level_buttons(self, screen):
+        self.level_buttons.clear()
 
-        # ================= BACKGROUND =================
+        sw, sh = screen.get_size()
+        scale = sh / self.BASE_H
+
+        cols, rows = 3, 3
+        icon_size = int(96 * scale)
+        gap_x = int(60 * scale)
+        gap_y = int(50 * scale)
+
+        total_w = cols * icon_size + (cols - 1) * gap_x
+        total_h = rows * icon_size + (rows - 1) * gap_y
+
+        start_x = (sw - total_w) // 2
+        start_y = (sh - total_h) // 2
+
+        cx, cy = sw // 2, sh // 2
+
+        start = self.current_page * self.levels_per_page
+        visible = self.level_icons[start:start + self.levels_per_page]
+
+        for i, name in enumerate(visible):
+            row, col = divmod(i, cols)
+
+            x = start_x + col * (icon_size + gap_x)
+            y = start_y + row * (icon_size + gap_y)
+
+            ox = x + icon_size // 2 - cx
+            oy = y + icon_size // 2 - cy
+
+            img = pygame.transform.scale(
+                self.icon_cache[name],
+                (icon_size, icon_size)
+            )
+
+            btn = Button(img, ("center", "center"), (ox, oy))
+            btn.level_id = start + i + 1
+            self.level_buttons.append(btn)
+
+    # ================= EVENT ==========================
+    def handle_event(self, event, screen):
+        for b in (self.btn_prev, self.btn_next, self.btn_back):
+            b.update_layout(screen)
+
+        if self.btn_prev.handle_event(event):
+            if self.current_page > 0:
+                self.current_page -= 1
+                self.need_rebuild = True
+                self.level_buttons.clear()
+                self._load_background(screen.get_size())
+
+        if self.btn_next.handle_event(event):
+            if self.current_page < self.total_pages - 1:
+                self.current_page += 1
+                self.need_rebuild = True
+                self.level_buttons.clear()
+                self._load_background(screen.get_size())
+
+        if self.btn_back.handle_event(event):
+            return "BACK"
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            for btn in self.level_buttons:
+                if (
+                    btn.rect.collidepoint(event.pos)
+                    and self.save.is_level_unlocked(btn.level_id)
+                ):
+                    return btn.level_id
+
+        return None
+
+    # ================= UPDATE =========================
+    def update(self, dt):
+        if self.bg:
+            self.bg.update(dt)
+
+    # ================= DRAW ===========================
+    def draw(self, screen, dt):
+        sw, sh = screen.get_size()
+        scale = sh / self.BASE_H
+
+        # ===== BACKGROUND =====
+        if self.bg is None or self.bg_size != (sw, sh):
+            self._load_background((sw, sh))
+
         if self.bg:
             self.bg.draw(screen)
         else:
             screen.fill((25, 25, 30))
 
-        mouse_pos = pygame.mouse.get_pos()
-        mouse_click = pygame.mouse.get_pressed()[0]
+        # ===== SCALE NAV BUTTON IMAGES =====
+        nav_w = int(48 * scale)
+        nav_h = int(nav_w * self.prev_raw.get_height() / self.prev_raw.get_width())
 
-        # ================= GRID CONFIG =================
-        cols = 3
-        rows = 3
+        self.btn_prev.image = pygame.transform.scale(self.prev_raw, (nav_w, nav_h))
+        self.btn_next.image = pygame.transform.scale(self.next_raw, (nav_w, nav_h))
 
-        total_w = cols * self.icon_size + (cols - 1) * self.gap_x
-        total_h = rows * self.icon_size + (rows - 1) * self.gap_y
+        home_w = int(56 * scale)
+        home_h = int(home_w * self.home_raw.get_height() / self.home_raw.get_width())
+        self.btn_back.image = pygame.transform.scale(self.home_raw, (home_w, home_h))
 
-        start_x = (sw - total_w) // 2
-        start_y = (sh - total_h) // 2
+        # ===== NAV OFFSETS (SCALE THEO MÀN HÌNH) =====
+        x_gap = int(140 * scale)
+        y_gap = int(60 * scale)
 
-        start = self.current_page * self.levels_per_page
-        end = start + self.levels_per_page
-        visible = self.level_icons[start:end]
+        self.btn_prev.base_offset = (-x_gap, -y_gap)
+        self.btn_next.base_offset = ( x_gap, -y_gap)
+        self.btn_back.base_offset = (int(40 * scale), int(40 * scale))
 
-        selected_level = None
+        # update layout sau khi set offset
+        for b in (self.btn_prev, self.btn_next, self.btn_back):
+            b.update_layout(screen)
 
-        # ================= LEVEL ICON =================
-        for i, icon_name in enumerate(visible):
-            level_number = start + i + 1
+        # ===== BUILD LEVEL BUTTONS =====
+        if self.need_rebuild:
+            self._build_level_buttons(screen)
+            self.need_rebuild = False
 
-            row = i // cols
-            col = i % cols
-
-            x = start_x + col * (self.icon_size + self.gap_x)
-            y = start_y + row * (self.icon_size + self.gap_y)
-
-            icon = pygame.image.load(
-                os.path.join(self.level_folder, icon_name)
-            ).convert_alpha()
-
-            icon = pygame.transform.scale(
-                icon, (self.icon_size, self.icon_size)
-            )
-
-            rect = icon.get_rect(topleft=(x, y))
-
-            unlocked = self.save.is_level_unlocked(level_number)
+        # ===== LEVEL ICONS =====
+        for btn in self.level_buttons:
+            unlocked = self.save.is_level_unlocked(btn.level_id)
 
             if unlocked:
-                screen.blit(icon, rect)
-                if rect.collidepoint(mouse_pos) and mouse_click:
-                    selected_level = level_number
+                btn.handle_hover()
             else:
-                locked = icon.copy()
+                btn.target_offset_y = 0
+
+            btn.update(dt, screen)
+
+            if unlocked:
+                btn.draw(screen)
+            else:
+                locked = btn.image.copy()
                 locked.fill(
-                    (0, 0, 0, 180),
+                    (120, 120, 120, 80),
                     special_flags=pygame.BLEND_RGBA_SUB
                 )
-                screen.blit(locked, rect)
+                screen.blit(locked, btn.rect)
 
-        # ================= BUTTON PREV / NEXT =================
-        btn_y = sh - 90  # ĐẨY LÊN CAO HƠN CHO KHỎI CHÌM
+        # ===== PAGE NUMBER (CĂN THEO PREV) =====
+        self._draw_page_number(screen, scale)
 
-        if self.current_page > 0:
-            prev_rect = self.btn_prev.get_rect(
-                center=(sw // 2 - 150, btn_y)
-            )
-            screen.blit(self.btn_prev, prev_rect)
+        # ===== NAV BUTTONS =====
+        for b in (self.btn_prev, self.btn_next, self.btn_back):
+            b.handle_hover()
+            b.update(dt, screen)
+            b.draw(screen)
 
-            if prev_rect.collidepoint(mouse_pos) and mouse_click:
-                self.current_page -= 1
-                self.load_bg_for_page()
-                pygame.time.delay(150)
+    # ================= PAGE ===========================
+    def _draw_page_number(self, screen, scale):
+        sw, sh = screen.get_size()
 
-        if self.current_page < self.total_pages - 1:
-            next_rect = self.btn_next.get_rect(
-                center=(sw // 2 + 150, btn_y)
-            )
-            screen.blit(self.btn_next, next_rect)
+        font_size = int(20 * scale)
+        font = pygame.font.Font(self.FONT_PATH, font_size)
 
-            if next_rect.collidepoint(mouse_pos) and mouse_click:
-                self.current_page += 1
-                self.load_bg_for_page()
-                pygame.time.delay(150)
+        text = f"{self.current_page + 1} / {self.total_pages}"
+        outline = font.render(text, True, (0, 0, 0))
+        main = font.render(text, True, (255, 255, 255))
 
-        # ================= PAGE NUMBER (KHÔNG CHÌM) =================
-        page_text = f"{self.current_page + 1} / {self.total_pages}"
+        y = self.btn_prev.rect.centery + int(2 * scale)
+        cx = sw // 2
 
-        # viền
-        outline = self.page_font.render(
-            page_text, True, (0, 0, 0)
-        )
-        outline_rect = outline.get_rect(
-            center=(sw // 2 + 2, btn_y + 2)
-        )
-        screen.blit(outline, outline_rect)
-
-        # chữ chính
-        text = self.page_font.render(
-            page_text, True, (255, 255, 255)
-        )
-        text_rect = text.get_rect(
-            center=(sw // 2, btn_y)
-        )
-        screen.blit(text, text_rect)
-
-        # ================= BACK BUTTON =================
-        back_rect = self.btn_back.get_rect(
-            topleft=(30, 30)
-        )
-        screen.blit(self.btn_back, back_rect)
-
-        if back_rect.collidepoint(mouse_pos) and mouse_click:
-            pygame.time.delay(150)
-            return "BACK"
-
-        return selected_level
+        screen.blit(outline, outline.get_rect(center=(cx + 2, y + 2)))
+        screen.blit(main, main.get_rect(center=(cx, y)))

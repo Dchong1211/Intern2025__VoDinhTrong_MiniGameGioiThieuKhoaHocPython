@@ -1,39 +1,41 @@
 import random
-
-
 class LevelObjective:
     def __init__(self):
-        # fruit_name -> {required, collected, max}
         self.objectives = {}
 
-    # ======================================
-    def generate(self, fruit_max_dict):
-        """
-        fruit_max_dict = {
-            "Apple": 5,
-            "Bananas": 3,
-            ...
-        }
-        """
-        self.objectives.clear()
-
-        for name, max_count in fruit_max_dict.items():
-            required = random.randint(1, max_count)
-
-            self.objectives[name] = {
-                "required": required,
+    # ================= GENERATE =================
+    def generate(self, fruit_max):
+        self.objectives = {
+            name: {
+                "required": random.randint(1, max_count),
                 "collected": 0,
                 "max": max_count
             }
+            for name, max_count in fruit_max.items()
+        }
 
-    # ======================================
-    def add(self, fruit_name, amount=1):
-        if fruit_name in self.objectives:
-            self.objectives[fruit_name]["collected"] += amount
+    # ================= UPDATE =================
+    def add(self, name, amount=1):
+        obj = self.objectives.get(name)
+        if not obj:
+            return
 
-    # ======================================
+        obj["collected"] = min(
+            obj["collected"] + amount,
+            obj["required"]
+        )
+
+    # ================= CHECK =================
     def is_completed(self):
-        for data in self.objectives.values():
-            if data["collected"] < data["required"]:
-                return False
-        return True
+        return all(
+            obj["collected"] >= obj["required"]
+            for obj in self.objectives.values()
+        )
+
+    # ================= UI HELPERS =================
+    def get_data(self):
+        return self.objectives
+
+    def reset(self):
+        for obj in self.objectives.values():
+            obj["collected"] = 0

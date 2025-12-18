@@ -1,94 +1,103 @@
 import pygame
+from enum import Enum
+
+
+class TransitionPhase(Enum):
+    IDLE = 0
+    CLOSING = 1
+    CLOSED = 2
+    OPENING = 3
 
 
 class SquareTransition:
     def __init__(self, size, duration=0.7, hold_time=0.15):
-        self.w, self.h = size
+        self.width, self.height = size
         self.duration = duration
         self.hold_time = hold_time
 
-        self.phase = "idle"          # idle | closing | closed | opening
-        self.t = 0.0
-        self.hold_t = 0.0
+        self.phase = TransitionPhase.IDLE
+        self.progress = 0.0
+        self.hold_timer = 0.0
 
         self.thickness = 0
-        self.max_thickness = max(self.w, self.h) // 2
+        self.max_thickness = max(self.width, self.height) // 2
 
-    # =============================
+    # ================= LAYOUT =================
     def resize(self, size):
-        self.w, self.h = size
-        self.max_thickness = max(self.w, self.h) // 2
+        self.width, self.height = size
+        self.max_thickness = max(self.width, self.height) // 2
+        self.thickness = min(self.thickness, self.max_thickness)
 
-        # giữ thickness trong giới hạn mới
-        if self.thickness > self.max_thickness:
-            self.thickness = self.max_thickness
-
-    # =============================
+    # ================= CONTROL =================
     def start_close(self):
-        self.phase = "closing"
-        self.t = 0.0
-        self.hold_t = 0.0
+        self.phase = TransitionPhase.CLOSING
+        self.progress = 0.0
+        self.hold_timer = 0.0
         self.thickness = 0
 
     def start_open(self):
-        self.phase = "opening"
-        self.t = 0.0
+        self.phase = TransitionPhase.OPENING
+        self.progress = 0.0
 
-    # =============================
+    # ================= UPDATE =================
     def update(self, dt):
-        if self.phase == "idle":
+        if self.phase == TransitionPhase.IDLE:
             return
 
-        # ---------- CLOSING ----------
-        if self.phase == "closing":
-            self.t += dt
-            p = min(self.t / self.duration, 1.0)
+        if self.phase == TransitionPhase.CLOSING:
+            self._update_closing(dt)
 
-            # ease-in (thu mượt)
-            eased = p * p
-            self.thickness = int(self.max_thickness * eased)
+        elif self.phase == TransitionPhase.CLOSED:
+            self._update_hold(dt)
 
-            if p >= 1.0:
-                self.thickness = self.max_thickness
-                self.phase = "closed"
-                self.hold_t = 0.0
+        elif self.phase == TransitionPhase.OPENING:
+            self._update_opening(dt)
 
-        # ---------- HOLD (GIỮ ĐEN) ----------
-        elif self.phase == "closed":
-            self.hold_t += dt
-            if self.hold_t >= self.hold_time:
-                self.start_open()
+    def _update_closing(self, dt):
+        self.progress = min(self.progress + dt / self.duration, 1.0)
+        eased = self.progress ** 2  # ease-in
+        self.thickness = int(self.max_thickness * eased)
 
-        # ---------- OPENING ----------
-        elif self.phase == "opening":
-            self.t += dt
-            p = min(self.t / self.duration, 1.0)
+        if self.progress >= 1.0:
+            self.thickness = self.max_thickness
+            self.phase = TransitionPhase.CLOSED
+            self.hold_timer = 0.0
 
-            # ease-out (mở mượt)
-            eased = 1 - (1 - p) * (1 - p)
-            self.thickness = int(self.max_thickness * (1 - eased))
+    def _update_hold(self, dt):
+        self.hold_timer += dt
+        if self.hold_timer >= self.hold_time:
+            self.start_open()
 
-            if p >= 1.0:
-                self.thickness = 0
-                self.phase = "idle"
+    def _update_opening(self, dt):
+        self.progress = min(self.progress + dt / self.duration, 1.0)
+        eased = 1 - (1 - self.progress) ** 2  # ease-out
+        self.thickness = int(self.max_thickness * (1 - eased))
 
-    # =============================
+        if self.progress >= 1.0:
+            self.thickness = 0
+            self.phase = TransitionPhase.IDLE
+
+    # ================= QUERY =================
     def is_closed(self):
-        return self.phase == "closed"
+        return self.phase == TransitionPhase.CLOSED
 
-    # =============================
-    def draw(self, screen):
-        if self.phase == "idle":
+    def is_active(self):
+        return self.phase != TransitionPhase.IDLE
+
+    # ================= DRAW =================
+    def draw(self, surface):
+        if self.phase == TransitionPhase.IDLE:
             return
 
         t = self.thickness
+        w, h = self.width, self.height
 
-        rects = [
-            pygame.Rect(0, 0, self.w, t),                  # trên
-            pygame.Rect(0, self.h - t, self.w, t),         # dưới
-            pygame.Rect(0, t, t, self.h - 2 * t),          # trái
-            pygame.Rect(self.w - t, t, t, self.h - 2 * t)  # phải
-        ]
+        rects = (
+            pygame.Rect(0, 0, w, t),               # top
+            pygame.Rect(0, h - t, w, t),            # bottom
+            pygame.Rect(0, t, t, h - 2 * t),         # left
+            pygame.Rect(w - t, t, t, h - 2 * t),     # right
+        )
 
         for r in rects:
-            pygame.draw.rect(screen, (0, 0, 0), r)
+            pygame.draw.rect(surface, (0, 0, 0), r)
