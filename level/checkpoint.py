@@ -38,6 +38,8 @@ class Checkpoint:
         self.waiting_quest = False
         self._finished = False
         self.player_inside = False
+        self.pending_next_level = False
+
     # ==================================================
     def _load_sheet(self, path):
         sheet = pygame.image.load(path).convert_alpha()
@@ -72,6 +74,8 @@ class Checkpoint:
         self.frame_index = 0
         self.anim_timer = 0.0
         self._finished = False
+        self.pending_next_level = True
+
 
     def force_active(self):
         self.active = True
@@ -100,6 +104,15 @@ class Checkpoint:
                     self.frames = self.idle_frames
                     self.frame_index = 0
                     self._finished = True
+
+                    if self.pending_next_level:
+                        self.pending_next_level = False
+                        pygame.event.post(
+                            pygame.event.Event(
+                                pygame.USEREVENT,
+                                {"action": "NEXT_LEVEL"}
+                            )
+                        )
 
         elif self.state == self.STATE_ACTIVE:
             self.anim_timer += dt

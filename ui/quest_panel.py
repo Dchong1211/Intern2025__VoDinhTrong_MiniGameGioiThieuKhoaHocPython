@@ -18,9 +18,17 @@ class QuestPanel:
         self.clicked = None
         self._last_panel_size = (0, 0)
 
+        # ===== DELAY WHEN CORRECT =====
+        self.correct_timer = 0.0
+        self.correct_delay = 1.5  # giây
+
         # ===== ASSETS =====
         self.board_src = pygame.image.load(
-            "assets/Menu/Buttons/Board.png"
+            "assets/Menu/Buttons/Board_1.png"
+        ).convert_alpha()
+
+        self.answer_src = pygame.image.load(
+            "assets/Menu/Buttons/Answer.png"
         ).convert_alpha()
 
         self.icons = {
@@ -33,14 +41,21 @@ class QuestPanel:
         # ===== RUNTIME =====
         self.board_img = None
         self.panel_rect = pygame.Rect(0, 0, 0, 0)
-
         self.close_rect = pygame.Rect(0, 0, 0, 0)
 
-        self.action_buttons = {}   # Button objects
-        self.action_rects = {}     # rect for click
+        self.action_buttons = {}
+        self.action_rects = {}
 
         self.font = None
         self.title_font = None
+
+    # ================= UTILS =================
+    def tint_image(self, image, color):
+        img = image.copy()
+        tint = pygame.Surface(img.get_size(), pygame.SRCALPHA)
+        tint.fill(color)
+        img.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        return img
 
     # ================= STATE =================
     def open(self):
@@ -48,20 +63,19 @@ class QuestPanel:
         self.failed = False
         self.hovered = None
         self.clicked = None
+        self.correct_timer = 0.0
         self.action_buttons.clear()
 
     def close(self):
         self.visible = False
         self.action_buttons.clear()
 
-        # 🔥 QUAN TRỌNG: cho phép mở lại quest
         if self.level_manager and self.level_manager.checkpoint:
             self.level_manager.checkpoint.waiting_quest = False
 
-
     # ================= EVENT =================
     def handle_event(self, event):
-        if not self.visible:
+        if not self.visible or self.correct_timer > 0:
             return
 
         if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
@@ -92,14 +106,10 @@ class QuestPanel:
         self.clicked = self.hovered
 
         if key == self.qm.answer():
-            if self.qm.is_key():
-                skill = self.qm.unlock_skill()
-                if skill:
-                    self.skills.unlock(skill)
-
-            self.level_manager.on_quest_success()
-            self.close()
+            # ✅ ĐÚNG → bật timer, KHÔNG qua màn liền
+            self.correct_timer = self.correct_delay
         else:
+            # ❌ SAI
             self.failed = True
             self.level_manager.item_manager.punish_random_type(0.1)
 
@@ -109,12 +119,11 @@ class QuestPanel:
             return
 
         sw, sh = surf.get_size()
-        scale = sh / self.BASE_H
         mx, my = pygame.mouse.get_pos()
 
         self._build_layout(sw, sh)
 
-        # ===== OVERLAY (vẽ TRƯỚC) =====
+        # ===== OVERLAY =====
         overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         surf.blit(overlay, (0, 0))
@@ -125,6 +134,13 @@ class QuestPanel:
         self._draw_close(surf, mx, my)
         self._draw_title(surf)
         self._draw_answers(surf, mx, my)
+
+        # ===== DELAY SUCCESS =====
+        if self.correct_timer > 0:
+            self.correct_timer -= 1 / 60
+            if self.correct_timer <= 0:
+                self.level_manager.on_quest_success()
+                self.close()
 
         if self.failed:
             self._draw_fail_menu(surf)
@@ -141,7 +157,7 @@ class QuestPanel:
         self.panel_rect = self.board_img.get_rect(center=(sw // 2, sh // 2))
 
         base = self.panel_rect.width
-        self.title_font = pygame.font.Font(self.FONT_PATH, int(base * 0.02))
+        self.title_font = pygame.font.Font(self.FONT_PATH, int(base * 0.03))
         self.font = pygame.font.Font(self.FONT_PATH, int(base * 0.018))
 
     # ================= UI =================
@@ -151,8 +167,8 @@ class QuestPanel:
 
         self.close_rect = icon.get_rect(
             topright=(
-                self.panel_rect.right - int(size * 0.8),
-                self.panel_rect.top + int(size * 0.8)
+                self.panel_rect.right - int(size * 0.4),
+                self.panel_rect.top + int(size * 0.4)
             )
         )
 
@@ -164,17 +180,16 @@ class QuestPanel:
         if not text:
             return
 
-        img = self.title_font.render(text, True, (255, 255, 255))
-        bg = img.get_rect(
-            midtop=(
-                self.panel_rect.centerx,
-                self.panel_rect.top + int(self.panel_rect.height * 0.22)
+        img = self.title_font.render(text, True, (255, 255, 80))
+        surf.blit(
+            img,
+            img.get_rect(
+                midtop=(
+                    self.panel_rect.centerx,
+                    self.panel_rect.top + int(self.panel_rect.height * 0.18)
+                )
             )
         )
-        bg.inflate_ip(28, 18)
-
-        pygame.draw.rect(surf, (40, 40, 60), bg, border_radius=12)
-        surf.blit(img, img.get_rect(center=bg.center))
 
     def _draw_answers(self, surf, mx, my):
         self.hovered = None
@@ -182,10 +197,10 @@ class QuestPanel:
         cx = self.panel_rect.centerx
         top = self.panel_rect.top + int(self.panel_rect.height * 0.38)
 
-        total_w = self.panel_rect.width * 0.7
+        total_w = self.panel_rect.width * 0.8
         gap = total_w * 0.08
         col_w = (total_w - gap) / 2
-        row_h = self.panel_rect.height * 0.18
+        row_h = self.panel_rect.height * 0.16
 
         left = cx - gap / 2 - col_w
         right = cx + gap / 2
@@ -202,56 +217,51 @@ class QuestPanel:
             if not self.failed and rect.collidepoint(mx, my):
                 self.hovered = i
 
-            color = None
-            if self.hovered == i and self.clicked is None:
-                color = (80, 80, 100)
-            elif self.clicked == i:
-                color = (70, 160, 90) if key == correct else (170, 70, 70)
+            btn_img = pygame.transform.scale(
+                self.answer_src, (int(col_w), int(row_h))
+            )
 
-            if color:
-                pygame.draw.rect(
-                    surf,
-                    color,
-                    rect.inflate(-int(col_w * 0.06), -int(row_h * 0.35)),
-                    border_radius=int(row_h * 0.25)
-                )
+            if self.clicked == i:
+                if key == correct:
+                    btn_img = self.tint_image(btn_img, (120, 220, 140, 255))
+                else:
+                    btn_img = self.tint_image(btn_img, (220, 90, 90, 255))
+            elif self.hovered == i and not self.failed:
+                btn_img = self.tint_image(btn_img, (200, 200, 200, 255))
 
+            surf.blit(btn_img, rect.topleft)
+
+            # ===== TEXT CANH TRÁI =====
+            padding_x = int(col_w * 0.08)
             txt = self.font.render(
                 f"[{key}] {choices.get(key, '')}", True, (255, 255, 255)
             )
             surf.blit(
                 txt,
-                (rect.x + int(col_w * 0.06),
-                 rect.centery - txt.get_height() // 2)
+                (
+                    rect.x + padding_x,
+                    rect.centery - txt.get_height() // 2
+                )
             )
 
-    # ================= FAIL MENU (BUTTON STYLE) =================
+    # ================= FAIL MENU =================
     def _draw_fail_menu(self, surf):
         cx = self.panel_rect.centerx
         cy = self.panel_rect.centery
-
-        y = self.panel_rect.bottom - int(self.panel_rect.height * 0.2)
+        y = self.panel_rect.bottom - int(self.panel_rect.height * 0.15)
 
         size = int(self.panel_rect.width * 0.075)
         gap = int(size * 1.5)
 
         names = ("levels", "restart", "home")
 
-        # 🔥 rebuild nếu chưa có hoặc panel đổi size
-        if (
-            not self.action_buttons
-            or self._last_panel_size != self.panel_rect.size
-        ):
+        if not self.action_buttons or self._last_panel_size != self.panel_rect.size:
             self.action_buttons.clear()
             self.action_rects.clear()
             self._last_panel_size = self.panel_rect.size
 
             for i, name in enumerate(names):
-                img = pygame.transform.scale(
-                    self.icons[name],
-                    (size, size)
-                )
-
+                img = pygame.transform.scale(self.icons[name], (size, size))
                 target_x = cx + (i - 1) * gap
                 target_y = y
 
@@ -263,10 +273,8 @@ class QuestPanel:
 
                 btn.bounce_speed = 8.0
                 btn.target_offset_y = 0
-
                 self.action_buttons[name] = btn
 
-        # ===== DRAW =====
         for name, btn in self.action_buttons.items():
             btn.handle_hover()
             btn.update(1 / 60, surf)

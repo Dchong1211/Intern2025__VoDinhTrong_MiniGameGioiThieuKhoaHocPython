@@ -87,8 +87,11 @@ class LevelManager:
 
     def on_quest_success(self):
         self.save.save_fruits(self.item_manager.export_data())
+
         if self.checkpoint:
             self.checkpoint.activate()
+            self.state = LevelState.CHECKPOINT_ANIM
+
 
     def on_quest_failed(self):
         if self.is_level_completed(self.current_level):

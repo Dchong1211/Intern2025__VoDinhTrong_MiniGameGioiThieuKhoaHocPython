@@ -15,6 +15,10 @@ class SaveManager:
             "fruits": {},
             "levels": {
                 "unlocked": [1]
+            },
+            "characters": {
+                "owned": ["Virtual Guy"],
+                "selected": "Virtual Guy"
             }
         }
 
@@ -42,10 +46,22 @@ class SaveManager:
     def _normalize(self):
         default = self._default_data()
 
+        # đảm bảo key gốc tồn tại
         for key, value in default.items():
             self.data.setdefault(key, value)
 
+        # levels
+        self.data.setdefault("levels", {})
         self.data["levels"].setdefault("unlocked", [1])
+
+        # characters (🔥 QUAN TRỌNG)
+        self.data.setdefault("characters", {})
+        self.data["characters"].setdefault(
+            "owned", ["Virtual Guy"]
+        )
+        self.data["characters"].setdefault(
+            "selected", "Virtual Guy"
+        )
 
     # ================= FRUITS =================
     def save_fruits(self, fruits):
@@ -66,3 +82,15 @@ class SaveManager:
 
     def is_level_unlocked(self, level_id):
         return level_id in self.data["levels"]["unlocked"]
+
+    # ================= CHARACTERS =================
+    def get_owned_characters(self):
+        return self.data["characters"]["owned"]
+
+    def get_selected_character(self):
+        return self.data["characters"]["selected"]
+
+    def save_characters(self, owned, selected):
+        self.data["characters"]["owned"] = owned
+        self.data["characters"]["selected"] = selected
+        self.save()
