@@ -66,9 +66,18 @@ class ItemManager:
         if not data:
             return
 
-        for name in self.count:
-            self.count[name] = data.get("count", {}).get(name, 0)
-            self.discovered[name] = data.get("discovered", {}).get(name, False)
+        # format mới
+        if "count" in data:
+            for name in self.count:
+                self.count[name] = data["count"].get(name, 0)
+                self.discovered[name] = data.get("discovered", {}).get(name, False)
+
+        # format cũ (phòng lỗi)
+        else:
+            for name in self.count:
+                self.count[name] = data.get(name, 0)
+                self.discovered[name] = data.get(name, 0) > 0
+
 
     # ================= PENALTY =================
     def punish_random_type(self, percent=0.1):

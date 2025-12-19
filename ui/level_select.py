@@ -43,7 +43,7 @@ class LevelSelect:
         self.bg = None
         self.bg_size = (0, 0)
 
-        # ================= RAW NAV IMAGES =================
+        # ================= RAW BUTTON IMAGES =================
         self.prev_raw = pygame.image.load(
             "assets/Menu/Buttons/Previous.png"
         ).convert_alpha()
@@ -56,10 +56,15 @@ class LevelSelect:
             "assets/Menu/Buttons/Home.png"
         ).convert_alpha()
 
-        # ================= NAV BUTTONS =================
+        self.char_raw = pygame.image.load(
+            "assets/Menu/Buttons/Achievements.png"  # icon chọn nhân vật
+        ).convert_alpha()
+
+        # ================= BUTTONS =================
         self.btn_prev = Button(self.prev_raw, ("center", "bottom"), (0, 0))
         self.btn_next = Button(self.next_raw, ("center", "bottom"), (0, 0))
         self.btn_back = Button(self.home_raw, ("left", "top"), (0, 0))
+        self.btn_character = Button(self.char_raw, ("right", "top"), (0, 0))
 
         # ================= LEVEL BUTTONS =================
         self.level_buttons = []
@@ -67,7 +72,7 @@ class LevelSelect:
         # ================= FONT =================
         self.font = pygame.font.Font(self.FONT_PATH, 20)
 
-        # ================= RESIZE FLAG =================
+        # ================= STATE =================
         self.need_rebuild = True
 
     # =================================================
@@ -76,8 +81,12 @@ class LevelSelect:
         self.level_buttons.clear()
         self.bg_size = (0, 0)
 
-        # reset bounce state
-        for b in (self.btn_prev, self.btn_next, self.btn_back):
+        for b in (
+            self.btn_prev,
+            self.btn_next,
+            self.btn_back,
+            self.btn_character,
+        ):
             b.offset_y = 0
             b.target_offset_y = 0
             b.update_layout(screen)
@@ -142,7 +151,12 @@ class LevelSelect:
 
     # ================= EVENT ==========================
     def handle_event(self, event, screen):
-        for b in (self.btn_prev, self.btn_next, self.btn_back):
+        for b in (
+            self.btn_prev,
+            self.btn_next,
+            self.btn_back,
+            self.btn_character,
+        ):
             b.update_layout(screen)
 
         if self.btn_prev.handle_event(event):
@@ -161,6 +175,9 @@ class LevelSelect:
 
         if self.btn_back.handle_event(event):
             return "BACK"
+
+        if self.btn_character.handle_event(event):
+            return "CHARACTER"
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for btn in self.level_buttons:
@@ -191,7 +208,7 @@ class LevelSelect:
         else:
             screen.fill((25, 25, 30))
 
-        # ===== SCALE NAV BUTTON IMAGES =====
+        # ===== SCALE BUTTON IMAGES =====
         nav_w = int(48 * scale)
         nav_h = int(nav_w * self.prev_raw.get_height() / self.prev_raw.get_width())
 
@@ -202,16 +219,25 @@ class LevelSelect:
         home_h = int(home_w * self.home_raw.get_height() / self.home_raw.get_width())
         self.btn_back.image = pygame.transform.scale(self.home_raw, (home_w, home_h))
 
-        # ===== NAV OFFSETS (SCALE THEO MÀN HÌNH) =====
+        char_w = int(56 * scale)
+        char_h = int(char_w * self.char_raw.get_height() / self.char_raw.get_width())
+        self.btn_character.image = pygame.transform.scale(self.char_raw, (char_w, char_h))
+
+        # ===== OFFSETS =====
         x_gap = int(140 * scale)
         y_gap = int(60 * scale)
 
         self.btn_prev.base_offset = (-x_gap, -y_gap)
         self.btn_next.base_offset = ( x_gap, -y_gap)
         self.btn_back.base_offset = (int(40 * scale), int(40 * scale))
+        self.btn_character.base_offset = (-int(40 * scale), int(40 * scale))
 
-        # update layout sau khi set offset
-        for b in (self.btn_prev, self.btn_next, self.btn_back):
+        for b in (
+            self.btn_prev,
+            self.btn_next,
+            self.btn_back,
+            self.btn_character,
+        ):
             b.update_layout(screen)
 
         # ===== BUILD LEVEL BUTTONS =====
@@ -240,11 +266,16 @@ class LevelSelect:
                 )
                 screen.blit(locked, btn.rect)
 
-        # ===== PAGE NUMBER (CĂN THEO PREV) =====
+        # ===== PAGE NUMBER =====
         self._draw_page_number(screen, scale)
 
         # ===== NAV BUTTONS =====
-        for b in (self.btn_prev, self.btn_next, self.btn_back):
+        for b in (
+            self.btn_prev,
+            self.btn_next,
+            self.btn_back,
+            self.btn_character,
+        ):
             b.handle_hover()
             b.update(dt, screen)
             b.draw(screen)
@@ -260,8 +291,9 @@ class LevelSelect:
         outline = font.render(text, True, (0, 0, 0))
         main = font.render(text, True, (255, 255, 255))
 
-        y = self.btn_prev.rect.centery + int(2 * scale)
         cx = sw // 2
+        y = sh - int(60 * scale)   # 🔥 FIXED POSITION
 
         screen.blit(outline, outline.get_rect(center=(cx + 2, y + 2)))
         screen.blit(main, main.get_rect(center=(cx, y)))
+

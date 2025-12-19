@@ -46,24 +46,24 @@ class CharacterManager:
         if self.is_owned(name):
             return False
 
-        price = CHARACTERS[name]["price"]
-
         if not self.can_buy(name):
             return False
 
-        # trừ trái
+        price = CHARACTERS[name]["price"]
+
+        # ===== TRỪ HOA QUẢ (RAM) =====
         self.item_manager.remove_fruits(price)
 
-        # thêm nhân vật
+        # ===== CẬP NHẬT NHÂN VẬT =====
         self.owned.append(name)
-
-        # auto chọn luôn
         self.selected = name
 
-        # lưu save
+        # ===== LƯU SAVE (QUAN TRỌNG NHẤT) =====
+        self.save.save_fruits(self.item_manager.count)   # 🔥 DÒNG BỊ THIẾU
         self.save.save_characters(self.owned, self.selected)
 
         return True
+
 
     def select(self, name):
         if name not in CHARACTERS:

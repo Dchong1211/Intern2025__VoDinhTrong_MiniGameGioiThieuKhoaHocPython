@@ -22,7 +22,9 @@ BASE_W, BASE_H = 1280, 720
 screen = pygame.display.set_mode((BASE_W, BASE_H), pygame.RESIZABLE)
 pygame.display.set_caption("Code Fruit")
 
-icon = pygame.image.load("assets/Background/Menu/Logo.png").convert_alpha()
+icon = pygame.image.load(
+    "assets/Background/Menu/Logo.png"
+).convert_alpha()
 pygame.display.set_icon(icon)
 
 clock = pygame.time.Clock()
@@ -34,10 +36,22 @@ windowed_size = (BASE_W, BASE_H)
 # ================= SAVE =================
 save = SaveManager()
 
+level_manager = LevelManager(save)
+
+# ===== LOAD FRUITS TỪ SAVE (🔥 RẤT QUAN TRỌNG) =====
+saved_fruits = save.get_fruits()
+level_manager.item_manager.import_data(saved_fruits)
+
 # ================= CHARACTER =================
-# item_manager sẽ được gắn sau khi vào gameplay
-char_manager = CharacterManager(save, None)
-char_select = CharacterSelect(char_manager)
+char_manager = CharacterManager(
+    save,
+    level_manager.item_manager
+)
+
+char_select = CharacterSelect(
+    char_manager,
+    level_manager.item_manager
+)
 
 # ================= STATE =================
 state = GameState.MENU
@@ -47,12 +61,6 @@ next_level = None
 # ================= UI =================
 menu = MainMenu()
 level_select = LevelSelect(save)
-
-# ================= LEVEL =================
-level_manager = LevelManager(save)
-
-# sau khi có level_manager → gắn item_manager cho character
-char_manager.item_manager = level_manager.item_manager
 
 # ================= WORLD =================
 WORLD_W, WORLD_H = level_manager.map_w, level_manager.map_h
@@ -98,7 +106,9 @@ while running:
         # ===== WINDOW RESIZE =====
         elif event.type == pygame.VIDEORESIZE:
             if not fullscreen:
-                screen = pygame.display.set_mode(event.size, pygame.RESIZABLE)
+                screen = pygame.display.set_mode(
+                    event.size, pygame.RESIZABLE
+                )
                 transition.resize(event.size)
                 level_select.on_resize(screen)
 
@@ -111,7 +121,9 @@ while running:
 
                 if fullscreen:
                     windowed_size = screen.get_size()
-                    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+                    screen = pygame.display.set_mode(
+                        (0, 0), pygame.FULLSCREEN
+                    )
                 else:
                     screen = pygame.display.set_mode(
                         windowed_size, pygame.RESIZABLE
@@ -127,25 +139,33 @@ while running:
         if state == GameState.MENU:
             result = menu.handle_event(event, screen)
             if result == "PLAY" and not transition.is_active():
-                next_state = GameState.CHARACTER_SELECT
+                next_state = GameState.LEVEL_SELECT
                 transition.start_close()
+
 
         elif state == GameState.CHARACTER_SELECT:
             char_select.handle_event(event)
 
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                next_state = GameState.MENU
-                transition.start_close()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    next_state = GameState.LEVEL_SELECT
+                    transition.start_close()
 
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                next_state = GameState.LEVEL_SELECT
-                transition.start_close()
+                elif event.key == pygame.K_RETURN:
+                    next_state = GameState.LEVEL_SELECT
+                    transition.start_close()
 
         elif state == GameState.LEVEL_SELECT:
             result = level_select.handle_event(event, screen)
+
             if result == "BACK" and not transition.is_active():
                 next_state = GameState.MENU
                 transition.start_close()
+
+            elif result == "CHARACTER" and not transition.is_active():
+                next_state = GameState.CHARACTER_SELECT
+                transition.start_close()
+
             elif isinstance(result, int) and not transition.is_active():
                 next_state = GameState.PLAYING
                 next_level = result
