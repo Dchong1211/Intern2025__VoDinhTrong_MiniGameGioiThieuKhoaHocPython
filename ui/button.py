@@ -2,29 +2,27 @@ import pygame
 
 
 class Button:
-    def __init__(self, image, anchor=("center", "center"), offset=(0, 0)):
+    def __init__(
+        self,
+        image,
+        anchor=("center", "center"),
+        offset=(0, 0),
+        origin=None
+    ):
         self.image = image
-        self.anchor = anchor
+
+        # ===== MODE =====
+        self.anchor = anchor        # screen-based (cũ)
+        self.origin = origin        # panel-based (mới)
 
         self.base_offset = offset
+
+        # ===== BOUNCE =====
         self.offset_y = 0.0
         self.target_offset_y = 0.0
-
         self.bounce_speed = 12.0
+
         self.rect = self.image.get_rect()
-
-    # =====================================
-    def update_layout(self, screen):
-        sw, sh = screen.get_size()
-        ax, ay = self.anchor
-        ox, oy = self.base_offset
-
-        x = sw // 2 if ax == "center" else (0 if ax == "left" else sw)
-        y = sh // 2 if ay == "center" else (0 if ay == "top" else sh)
-
-        self.rect = self.image.get_rect(
-            center=(x + ox, y + oy + int(self.offset_y))
-        )
 
     # =====================================
     def handle_hover(self):
@@ -34,13 +32,44 @@ class Button:
             self.target_offset_y = 0
 
     # =====================================
+    def _compute_rect(self, screen):
+        ox, oy = self.base_offset
+
+        # ===== MODE 1: PANEL / ORIGIN =====
+        if self.origin is not None:
+            px, py = self.origin
+            return self.image.get_rect(
+                center=(px + ox, py + oy + int(self.offset_y))
+            )
+
+        # ===== MODE 2: SCREEN / ANCHOR =====
+        sw, sh = screen.get_size()
+        ax, ay = self.anchor
+
+        x = sw // 2 if ax == "center" else (0 if ax == "left" else sw)
+        y = sh // 2 if ay == "center" else (0 if ay == "top" else sh)
+
+        return self.image.get_rect(
+            center=(x + ox, y + oy + int(self.offset_y))
+        )
+
+    # =====================================
     def update(self, dt, screen):
         # spring Y
         self.offset_y += (
             self.target_offset_y - self.offset_y
         ) * self.bounce_speed * dt
 
-        self.update_layout(screen)
+        self.rect = self._compute_rect(screen)
+
+    # =====================================
+    def update_layout(self, screen):
+        """
+        BACKWARD COMPAT:
+        - Dùng cho LevelSelect, MainMenu cũ
+        - Không animation, chỉ set rect
+        """
+        self.rect = self._compute_rect(screen)
 
     # =====================================
     def handle_event(self, event):

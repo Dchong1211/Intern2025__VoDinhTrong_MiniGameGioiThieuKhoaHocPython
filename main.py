@@ -16,6 +16,7 @@ from ui.quest_panel import QuestPanel
 from ui.square_transition import SquareTransition
 
 pygame.init()
+pygame.mixer.init()
 
 # ================= WINDOW =================
 BASE_W, BASE_H = 1280, 720
@@ -36,6 +37,7 @@ windowed_size = (BASE_W, BASE_H)
 # ================= SAVE =================
 save = SaveManager()
 
+# ================= LEVEL MANAGER =================
 level_manager = LevelManager(save)
 
 # ===== LOAD FRUITS TỪ SAVE (🔥 RẤT QUAN TRỌNG) =====
@@ -142,16 +144,11 @@ while running:
                 next_state = GameState.LEVEL_SELECT
                 transition.start_close()
 
-
         elif state == GameState.CHARACTER_SELECT:
             char_select.handle_event(event)
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    next_state = GameState.LEVEL_SELECT
-                    transition.start_close()
-
-                elif event.key == pygame.K_RETURN:
                     next_state = GameState.LEVEL_SELECT
                     transition.start_close()
 
@@ -171,8 +168,30 @@ while running:
                 next_level = result
                 transition.start_close()
 
-        elif state == GameState.PLAYING and quest_panel:
-            quest_panel.handle_event(event)
+        elif state == GameState.PLAYING:
+            # ===== HUD SETTING ACTIONS =====
+            action = hud.handle_event(event)
+
+            if action == "HOME" and not transition.is_active():
+                next_state = GameState.MENU
+                transition.start_close()
+
+            elif action == "LEVEL" and not transition.is_active():
+                next_state = GameState.LEVEL_SELECT
+                transition.start_close()
+
+            elif action == "RESTART" and not transition.is_active():
+                next_state = GameState.PLAYING
+                next_level = level_manager.current_level
+                transition.start_close()
+
+            elif action == "TOGGLE_SOUND":
+                pygame.mixer.music.set_volume(
+                    1.0 if hud.sound_on else 0.0
+                )
+
+            if quest_panel:
+                quest_panel.handle_event(event)
 
     # ================= UPDATE =================
     if state == GameState.PLAYING:

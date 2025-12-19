@@ -1,12 +1,12 @@
 {
     "fruits": {
-        "Apple": 0,
+        "Apple": 4,
         "Bananas": 0,
-        "Cherries": 0,
+        "Cherries": 8,
         "Kiwi": 0,
         "Melon": 0,
-        "Orange": 0,
-        "Pineapple": 2,
+        "Orange": 12,
+        "Pineapple": 6,
         "Strawberry": 0
     },
     "levels": {
@@ -19,9 +19,8 @@
     "characters": {
         "owned": [
             "Virtual Guy",
-            "Mask Dude",
-            "Ninja Frog"
+            "Mask Dude"
         ],
-        "selected": "Virtual Guy"
+        "selected": "Mask Dude"
     }
 }

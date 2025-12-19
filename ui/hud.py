@@ -1,5 +1,6 @@
 import os
 import pygame
+from ui.button import Button
 
 
 class HUD:
@@ -11,15 +12,51 @@ class HUD:
         self.objective = objective
 
         self.show_objectives = True
+        self.setting_buttons = {}   # name -> Button
+        self._last_setting_size = (0, 0)
 
+        # ===== INVENTORY ICONS =====
         self.icons = self._load_icons()
+
+        # ===== SETTINGS ICON =====
         self.setting_icon = pygame.image.load(
             "assets/Menu/Buttons/Settings.png"
         ).convert_alpha()
 
         self.setting_rect = None
+        self.setting_open = False
+        self.sound_on = True
 
-    # ================= LOAD =================
+        # ===== SETTING PANEL ASSETS =====
+        self.board_img = pygame.image.load(
+            "assets/Menu/Buttons/Board_1.png"
+        ).convert_alpha()
+
+        self.icon_home = pygame.image.load(
+            "assets/Menu/Buttons/Home.png"
+        ).convert_alpha()
+
+        self.icon_levels = pygame.image.load(
+            "assets/Menu/Buttons/Levels.png"
+        ).convert_alpha()
+
+        self.icon_restart = pygame.image.load(
+            "assets/Menu/Buttons/Restart.png"
+        ).convert_alpha()
+
+        self.icon_volume = pygame.image.load(
+            "assets/Menu/Buttons/Volume.png"
+        ).convert_alpha()
+
+        self.icon_unvolume = pygame.image.load(
+            "assets/Menu/Buttons/Unvolume.png"
+        ).convert_alpha()
+
+        self.btn_rects = {}
+
+    # ======================================================
+    # LOAD ICONS
+    # ======================================================
     def _load_icons(self):
         base = "assets/Items/Fruits"
         icons = {}
@@ -29,12 +66,13 @@ class HUD:
                 os.path.join(base, f"{name}.png")
             ).convert_alpha()
 
-            frame = sheet.subsurface((0, 0, 32, 32))
-            icons[name] = frame
+            icons[name] = sheet.subsurface((0, 0, 32, 32))
 
         return icons
 
-    # ================= UTILS =================
+    # ======================================================
+    # UTILS
+    # ======================================================
     def _scale(self, surf):
         return surf.get_height() / self.BASE_H
 
@@ -64,7 +102,35 @@ class HUD:
         surf.blit(base, (thick, thick))
         return surf
 
-    # ================= INVENTORY =================
+    # ======================================================
+    # HANDLE EVENT (IMPORTANT)
+    # ======================================================
+    def handle_event(self, event):
+        if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
+            return None
+
+        mx, my = event.pos
+
+        # click setting icon
+        if self.setting_rect and self.setting_rect.collidepoint(mx, my):
+            self.setting_open = not self.setting_open
+            return None
+
+        if not self.setting_open:
+            return None
+
+        for key, rect in self.btn_rects.items():
+            if rect.collidepoint(mx, my):
+                if key == "SOUND":
+                    self.sound_on = not self.sound_on
+                    return "TOGGLE_SOUND"
+                return key
+
+        return None
+
+    # ======================================================
+    # INVENTORY
+    # ======================================================
     def _draw_inventory(self, surf, scale):
         sw, _ = surf.get_size()
 
@@ -101,7 +167,9 @@ class HUD:
 
             x -= spacing
 
-    # ================= OBJECTIVES =================
+    # ======================================================
+    # OBJECTIVES
+    # ======================================================
     def _draw_objectives(self, surf, scale):
         if not self.objective or not self.objective.objectives:
             return
@@ -173,7 +241,6 @@ class HUD:
 
         for text, icon in lines[1:]:
             surf.blit(text, (x + pad, draw_y))
-
             if icon:
                 surf.blit(
                     icon,
@@ -182,11 +249,15 @@ class HUD:
                         draw_y + (text.get_height() - icon.get_height()) // 2
                     )
                 )
-
             draw_y += text.get_height() + gap
+    def _is_hover(self, rect):
+        mx, my = pygame.mouse.get_pos()
+        return rect.collidepoint(mx, my)
 
-    # ================= SETTINGS =================
-    def _draw_settings(self, surf, scale):
+    # ======================================================
+    # SETTINGS ICON
+    # ======================================================
+    def _draw_settings_icon(self, surf, scale):
         sw, sh = surf.get_size()
         size = int(48 * scale)
 
@@ -198,7 +269,84 @@ class HUD:
         surf.blit(icon, (x, y))
         self.setting_rect = pygame.Rect(x, y, size, size)
 
-    # ================= MAIN DRAW =================
+    # ======================================================
+    # SETTINGS PANEL
+    # ======================================================
+    def _draw_setting_panel(self, surf, scale):
+        if not self.setting_rect:
+            return
+
+        sw, sh = surf.get_size()
+
+        # ===== PANEL SIZE =====
+        panel_w = int(320 * scale)
+        panel_h = int(96 * scale)
+        GAP = int(12 * scale)
+
+        px = self.setting_rect.right + GAP
+        py = self.setting_rect.centery - panel_h // 2
+
+        px = max(GAP, min(px, sw - panel_w - GAP))
+        py = max(GAP, min(py, sh - panel_h - GAP))
+
+        panel_rect = pygame.Rect(px, py, panel_w, panel_h)
+
+        # ===== DRAW BOARD =====
+        board = pygame.transform.scale(self.board_img, (panel_w, panel_h))
+        surf.blit(board, panel_rect.topleft)
+
+        # ===== ICON CONFIG =====
+        icon_size = int(48 * scale)
+        gap = int(20 * scale)
+
+        icons = [
+            ("HOME", self.icon_home),
+            ("LEVEL", self.icon_levels),
+            ("RESTART", self.icon_restart),
+            ("SOUND", self.icon_volume if self.sound_on else self.icon_unvolume),
+        ]
+
+        total_w = len(icons) * icon_size + (len(icons) - 1) * gap
+        start_x = panel_rect.left + (panel_w - total_w) // 2
+        y = panel_rect.top + (panel_h - icon_size) // 2
+
+        # ===== REBUILD BUTTONS =====
+        if not self.setting_buttons or self._last_setting_size != panel_rect.size:
+            self.setting_buttons.clear()
+            self.btn_rects.clear()
+            self._last_setting_size = panel_rect.size
+
+            for i, (name, icon) in enumerate(icons):
+                img = pygame.transform.scale(icon, (icon_size, icon_size))
+
+                target_x = start_x + i * (icon_size + gap) + icon_size // 2
+                target_y = y + icon_size // 2
+
+                cx, cy = panel_rect.center
+
+                btn = Button(
+                    image=img,
+                    offset=(target_x - panel_rect.centerx,
+                            target_y - panel_rect.centery),
+                    origin=panel_rect.center
+                )
+
+
+                btn.bounce_speed = 8.0
+                btn.target_offset_y = 0
+
+                self.setting_buttons[name] = btn
+
+        # ===== UPDATE & DRAW =====
+        for name, btn in self.setting_buttons.items():
+            btn.handle_hover()
+            btn.update(1 / 60, surf)
+            btn.draw(surf)
+            self.btn_rects[name] = btn.rect
+
+    # ======================================================
+    # MAIN DRAW
+    # ======================================================
     def draw(self, surf):
         scale = self._scale(surf)
 
@@ -206,4 +354,7 @@ class HUD:
             self._draw_objectives(surf, scale)
 
         self._draw_inventory(surf, scale)
-        self._draw_settings(surf, scale)
+        self._draw_settings_icon(surf, scale)
+
+        if self.setting_open:
+            self._draw_setting_panel(surf, scale)
