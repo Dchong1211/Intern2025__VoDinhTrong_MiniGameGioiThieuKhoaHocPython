@@ -78,5 +78,28 @@ class ItemManager:
 
         fruit = random.choice(available)
         lost = max(1, int(self.count[fruit] * percent))
-
         self.count[fruit] = max(0, self.count[fruit] - lost)
+
+    # ================= SHOP SUPPORT ===================
+
+    def total_fruits(self):
+        """Tổng số trái cây hiện có"""
+        return sum(self.count.values())
+
+    def remove_fruits(self, amount):
+
+        if amount <= 0:
+            return
+
+        # Trừ theo thứ tự cố định để dễ kiểm soát
+        for name in self.FRUIT_TYPES:
+            if amount <= 0:
+                break
+
+            have = self.count[name]
+            if have <= 0:
+                continue
+
+            take = min(have, amount)
+            self.count[name] -= take
+            amount -= take

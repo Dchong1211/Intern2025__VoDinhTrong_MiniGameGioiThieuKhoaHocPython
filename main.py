@@ -5,6 +5,9 @@ from data.save_manager import SaveManager
 from level.level_manager import LevelManager
 from level.quest_manager import QuestManager
 
+from characters.character_manager import CharacterManager
+from characters.character_select import CharacterSelect
+
 from ui.game_state import GameState
 from ui.main_menu import MainMenu
 from ui.level_select import LevelSelect
@@ -31,6 +34,11 @@ windowed_size = (BASE_W, BASE_H)
 # ================= SAVE =================
 save = SaveManager()
 
+# ================= CHARACTER =================
+# item_manager sẽ được gắn sau khi vào gameplay
+char_manager = CharacterManager(save, None)
+char_select = CharacterSelect(char_manager)
+
 # ================= STATE =================
 state = GameState.MENU
 next_state = None
@@ -42,6 +50,9 @@ level_select = LevelSelect(save)
 
 # ================= LEVEL =================
 level_manager = LevelManager(save)
+
+# sau khi có level_manager → gắn item_manager cho character
+char_manager.item_manager = level_manager.item_manager
 
 # ================= WORLD =================
 WORLD_W, WORLD_H = level_manager.map_w, level_manager.map_h
@@ -91,7 +102,6 @@ while running:
                 transition.resize(event.size)
                 level_select.on_resize(screen)
 
-
         # ===== KEY INPUT =====
         elif event.type == pygame.KEYDOWN:
 
@@ -100,17 +110,11 @@ while running:
                 fullscreen = not fullscreen
 
                 if fullscreen:
-                    # lưu size trước khi vào fullscreen
                     windowed_size = screen.get_size()
-                    screen = pygame.display.set_mode(
-                        (0, 0),
-                        pygame.FULLSCREEN
-                    )
+                    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
                 else:
-                    # restore size cũ
                     screen = pygame.display.set_mode(
-                        windowed_size,
-                        pygame.RESIZABLE
+                        windowed_size, pygame.RESIZABLE
                     )
 
                 transition.resize(screen.get_size())
@@ -123,6 +127,17 @@ while running:
         if state == GameState.MENU:
             result = menu.handle_event(event, screen)
             if result == "PLAY" and not transition.is_active():
+                next_state = GameState.CHARACTER_SELECT
+                transition.start_close()
+
+        elif state == GameState.CHARACTER_SELECT:
+            char_select.handle_event(event)
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                next_state = GameState.MENU
+                transition.start_close()
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 next_state = GameState.LEVEL_SELECT
                 transition.start_close()
 
@@ -186,6 +201,10 @@ while running:
     # ================= DRAW =================
     if state == GameState.MENU:
         menu.draw(screen, dt)
+
+    elif state == GameState.CHARACTER_SELECT:
+        screen.fill((20, 20, 25))
+        char_select.draw(screen)
 
     elif state == GameState.LEVEL_SELECT:
         level_select.update(dt)

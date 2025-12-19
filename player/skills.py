@@ -5,7 +5,7 @@ class Skills:
         "double_jump": True,
         "wall_slide": False,
         "wall_jump": False,
-        "dash": False,
+        "dash": True,
     }
 
     def __init__(self):

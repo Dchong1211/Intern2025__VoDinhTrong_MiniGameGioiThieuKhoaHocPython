@@ -1,12 +1,12 @@
 {
     "fruits": {
         "count": {
-            "Apple": 11,
+            "Apple": 13,
             "Bananas": 0,
-            "Cherries": 5,
+            "Cherries": 6,
             "Kiwi": 0,
             "Melon": 0,
-            "Orange": 11,
+            "Orange": 12,
             "Pineapple": 6,
             "Strawberry": 0
         },
@@ -24,13 +24,17 @@
     "levels": {
         "unlocked": [
             1,
-            2
+            2,
+            3
         ]
     },
     "characters": {
         "owned": [
-            "Virtual Guy"
+            "Virtual Guy",
+            "Mask Dude",
+            "Ninja Frog",
+            "Pink Man"
         ],
-        "selected": "Virtual Guy"
+        "selected": "Pink Man"
     }
 }

@@ -6,7 +6,6 @@ from player.skills import Skills
 
 class Player:
     SIZE = 32
-    BASE_PATH = "assets/Main Characters/Virtual Guy"
 
     IDLE = "idle"
     RUN = "run"
@@ -16,9 +15,15 @@ class Player:
     SLIDE = "slide"
     DASH = "dash"
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, character="Virtual Guy"):
+        # ===== CHARACTER =====
+        self.character = character
+        self.base_path = f"assets/Main Characters/{self.character}"
+
+        # ===== RECT =====
         self.rect = pygame.Rect(x, y, self.SIZE, self.SIZE)
 
+        # ===== ANIMATIONS =====
         self.animations = {
             self.IDLE:   self._load_anim("Idle.png", 0.25),
             self.RUN:    self._load_anim("Run.png", 0.25),
@@ -74,7 +79,7 @@ class Player:
     # ================= LOAD =================
     def _load_anim(self, name, speed, loop=True):
         sheet = pygame.image.load(
-            os.path.join(self.BASE_PATH, name)
+            os.path.join(self.base_path, name)
         ).convert_alpha()
         return Animation(sheet, self.SIZE, self.SIZE, speed, loop)
 

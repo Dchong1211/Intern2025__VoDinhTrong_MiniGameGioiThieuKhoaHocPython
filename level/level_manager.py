@@ -70,7 +70,7 @@ class LevelManager:
         self.load_level(self.current_level)
 
     # ==================================================
-    # ================= PUBLIC API (BẮT BUỘC) ==========
+    # ================= PUBLIC API =====================
     # ==================================================
 
     def restart_level(self):
@@ -91,7 +91,6 @@ class LevelManager:
         if self.checkpoint:
             self.checkpoint.activate()
             self.state = LevelState.CHECKPOINT_ANIM
-
 
     def on_quest_failed(self):
         if self.is_level_completed(self.current_level):
@@ -129,8 +128,12 @@ class LevelManager:
         if self.checkpoint and self.is_level_completed(level_id):
             self.checkpoint.force_active()
 
+        # fallback (nếu map không có object Player)
         if not self.player:
-            self.player = Player(32, 32)
+            self.player = Player(
+                32, 32,
+                self.save.get_selected_character()
+            )
 
     # ==================================================
     # ================= LOAD HELPERS ===================
@@ -173,9 +176,14 @@ class LevelManager:
         self.player = None
         self.checkpoint = None
 
+        character = self.save.get_selected_character()
+
         for obj in self.tmx.objects:
             if obj.name == "Player":
-                self.player = Player(obj.x, obj.y)
+                self.player = Player(
+                    obj.x, obj.y,
+                    character
+                )
 
             elif obj.name == "Checkpoint":
                 self.checkpoint = Checkpoint(obj.x, obj.y)
@@ -218,7 +226,10 @@ class LevelManager:
                 self.state = LevelState.FADING_OUT
 
         elif self.state == LevelState.FADING_OUT:
-            self.fade_alpha = min(255, self.fade_alpha + self.fade_speed * dt)
+            self.fade_alpha = min(
+                255,
+                self.fade_alpha + self.fade_speed * dt
+            )
             if self.fade_alpha >= 255:
                 self.state = LevelState.LOADING
 
@@ -226,7 +237,10 @@ class LevelManager:
             self._load_next_level()
 
         elif self.state == LevelState.FADING_IN:
-            self.fade_alpha = max(0, self.fade_alpha - self.fade_speed * dt)
+            self.fade_alpha = max(
+                0,
+                self.fade_alpha - self.fade_speed * dt
+            )
             if self.fade_alpha <= 0:
                 self.state = LevelState.PLAYING
 
@@ -252,7 +266,6 @@ class LevelManager:
 
         inside = self.player.rect.colliderect(self.checkpoint.rect)
 
-        # 🔥 Player vừa bước VÀO checkpoint
         if inside and not self.checkpoint.player_inside:
             if not self.checkpoint.active:
                 if self.is_level_completed(self.current_level):
@@ -263,7 +276,6 @@ class LevelManager:
             else:
                 self.state = LevelState.CHECKPOINT_ANIM
 
-        # cập nhật trạng thái cho frame sau
         self.checkpoint.player_inside = inside
 
     def _load_next_level(self):
