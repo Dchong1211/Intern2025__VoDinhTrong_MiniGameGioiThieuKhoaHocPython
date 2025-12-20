@@ -7,6 +7,7 @@ from player.skills import Skills
 class Player:
     SIZE = 32
 
+    # ===== STATES =====
     IDLE = "idle"
     RUN = "run"
     JUMP = "jump"
@@ -15,16 +16,22 @@ class Player:
     SLIDE = "slide"
     DASH = "dash"
 
+    HIT = "hit"
+    DISAPPEAR = "disappear"
+    APPEAR = "appear"
+
     def __init__(self, x, y, character="Virtual Guy"):
         # ===== CHARACTER =====
         self.character = character
         self.base_path = f"assets/Main Characters/{self.character}"
 
-        # ===== RECT =====
+        # ===== RECT (HITBOX) =====
         self.rect = pygame.Rect(x, y, self.SIZE, self.SIZE)
+        self.spawn_pos = (x, y)
 
         # ===== ANIMATIONS =====
         self.animations = {
+            # 32x32
             self.IDLE:   self._load_anim("Idle.png", 0.25),
             self.RUN:    self._load_anim("Run.png", 0.25),
             self.JUMP:   self._load_anim("Jump.png", 0.25, loop=False),
@@ -32,6 +39,15 @@ class Player:
             self.FALL:   self._load_anim("Fall.png", 0.25),
             self.SLIDE:  self._load_anim("Wall Slide.png", 0.15),
             self.DASH:   self._load_anim("Dash.png", 0.2, loop=False),
+            self.HIT:    self._load_anim("Hit.png", 0.2, loop=False),
+
+            # 96x96 (QUAN TRỌNG)
+            self.DISAPPEAR: self._load_anim(
+                "Desappearing (96x96).png", 0.3, loop=False, size=96
+            ),
+            self.APPEAR: self._load_anim(
+                "Appearing (96x96).png", 0.3, loop=False, size=96
+            ),
         }
 
         self.state = self.IDLE
@@ -51,16 +67,15 @@ class Player:
         self.jump_key_down = False
         self.is_double_jumping = False
 
-        # ===== GROUND =====
+        # ===== GROUND / WALL =====
         self.on_ground = False
         self.ground_buffer = 0
         self.ground_buffer_time = 4
 
-        # ===== WALL =====
         self.on_wall = False
         self.wall_dir = 0
 
-        # ===== DROP ONE-WAY =====
+        # ===== DROP =====
         self.drop_timer = 0
         self.drop_duration = 12
 
@@ -72,20 +87,34 @@ class Player:
         self.dash_dir = 1
         self.dash_key_down = False
 
+        # ===== DAMAGE / RESPAWN =====
+        self.control_lock = False
+        self.invincible = False
+        self.invincible_timer = 0
+        self.invincible_time = 30
+
         # ===== OTHER =====
         self.skills = Skills()
         self.facing_right = True
 
-    # ================= LOAD =================
-    def _load_anim(self, name, speed, loop=True):
+    # ==================================================
+    # LOAD ANIMATION (HỖ TRỢ NHIỀU SIZE)
+    # ==================================================
+    def _load_anim(self, name, speed, loop=True, size=None):
         sheet = pygame.image.load(
             os.path.join(self.base_path, name)
         ).convert_alpha()
-        return Animation(sheet, self.SIZE, self.SIZE, speed, loop)
 
-    # ================= INPUT =================
+        if size is None:
+            size = self.SIZE
+
+        return Animation(sheet, size, size, speed, loop)
+
+    # ==================================================
+    # INPUT
+    # ==================================================
     def _handle_input(self, keys):
-        if self.dash_timer > 0:
+        if self.control_lock or self.dash_timer > 0:
             return
 
         self.vel_x = 0
@@ -141,9 +170,22 @@ class Player:
 
         self.dash_key_down = shift
 
-    # ================= UPDATE =================
+    # ==================================================
+    # UPDATE
+    # ==================================================
     def update(self, dt, keys, tiles, one_way):
+        # Khoá physics khi teleport
+        if self.state in (self.DISAPPEAR, self.APPEAR):
+            self._update_animation()
+            self._handle_respawn_flow()
+            return
+
         self._handle_input(keys)
+
+        if self.invincible:
+            self.invincible_timer -= 1
+            if self.invincible_timer <= 0:
+                self.invincible = False
 
         if self.drop_timer > 0:
             self.drop_timer -= 1
@@ -151,10 +193,14 @@ class Player:
         self._apply_gravity()
         self._move_x(tiles)
         self._move_y(tiles, one_way)
+
         self._update_state()
         self._update_animation()
+        self._handle_respawn_flow()
 
-    # ================= PHYSICS =================
+    # ==================================================
+    # PHYSICS
+    # ==================================================
     def _apply_gravity(self):
         if self.dash_timer <= 0:
             self.vel_y = min(self.vel_y + self.gravity, self.max_fall_speed)
@@ -217,8 +263,13 @@ class Player:
         self.can_dash = True
         self.dash_timer = 0
 
-    # ================= STATE =================
+    # ==================================================
+    # STATE
+    # ==================================================
     def _update_state(self):
+        if self.state in (self.HIT, self.DISAPPEAR, self.APPEAR):
+            return
+
         grounded = self.ground_buffer > 0
         wall_slide = (
             self.on_wall and not grounded
@@ -248,9 +299,67 @@ class Player:
             self.current_anim.reset()
         self.current_anim.update()
 
-    # ================= DRAW =================
+    # ==================================================
+    # DAMAGE / RESPAWN FLOW
+    # ==================================================
+    def take_damage(self):
+        if self.invincible or self.state in (
+            self.HIT, self.DISAPPEAR, self.APPEAR
+        ):
+            return
+
+        self.invincible = True
+        self.invincible_timer = self.invincible_time
+
+        self.control_lock = True
+        self.vel_x = 0
+        self.vel_y = 0
+
+        self.state = self.HIT
+        self.current_anim = self.animations[self.HIT]
+        self.current_anim.reset()
+
+    def _handle_respawn_flow(self):
+        anim = self.current_anim
+
+        if self.state == self.HIT and anim.finished:
+            self.state = self.DISAPPEAR
+            self.current_anim = self.animations[self.DISAPPEAR]
+            self.current_anim.reset()
+
+        elif self.state == self.DISAPPEAR and anim.finished:
+            self.rect.topleft = self.spawn_pos
+            self.vel_x = 0
+            self.vel_y = 0
+
+            self.state = self.APPEAR
+            self.current_anim = self.animations[self.APPEAR]
+            self.current_anim.reset()
+
+        elif self.state == self.APPEAR and anim.finished:
+            self.control_lock = False
+            self.state = self.IDLE
+            self.current_anim = self.animations[self.IDLE]
+            self.current_anim.reset()
+
+    # ==================================================
+    # STOMP (ENEMY GỌI)
+    # ==================================================
+    def on_stomp(self):
+        self.vel_y = -4
+        self.jump_count = 1
+        self.is_double_jumping = False
+
+    # ==================================================
+    # DRAW
+    # ==================================================
     def draw(self, surf):
+        if self.invincible and pygame.time.get_ticks() % 200 < 100:
+            return
+
         img = self.current_anim.get_image()
         if not self.facing_right:
             img = pygame.transform.flip(img, True, False)
-        surf.blit(img, self.rect)
+
+        img_rect = img.get_rect(center=self.rect.center)
+        surf.blit(img, img_rect)

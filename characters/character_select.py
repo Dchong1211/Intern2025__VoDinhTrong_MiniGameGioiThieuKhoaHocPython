@@ -165,7 +165,7 @@ class CharacterSelect:
         rows = (len(CHARACTERS) + cols - 1) // cols
         gap_y = ITEM_HEIGHT
 
-        SAFE_TOP = 180
+        SAFE_TOP = 100
         SAFE_BOTTOM = 40
 
         grid_height = rows * gap_y
@@ -296,11 +296,9 @@ class CharacterSelect:
                 ]
 
                 if fruits:
-                    ICON_SIZE = 80
-                    BLOCK_GAP = 48
-                    TEXT_GAP = 14
-
-
+                    ICON_SIZE = 72
+                    BLOCK_GAP = 44
+                    TEXT_GAP = 12
 
                     # đo width text
                     sample_txt = self.text_font.render("99", True, (255, 255, 255))

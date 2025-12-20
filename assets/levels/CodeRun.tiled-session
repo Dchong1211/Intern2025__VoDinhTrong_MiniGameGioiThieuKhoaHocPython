@@ -31,7 +31,7 @@
             "scale": 1,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 287,
+                "x": 288,
                 "y": 159.5
             }
         },
@@ -60,6 +60,7 @@
         "Green.tsx"
     ],
     "project": "CodeRun.tiled-project",
+    "property.type": "float",
     "recentFiles": [
         "tileset.tsx",
         "level2.tmx",

@@ -12,6 +12,8 @@ from level.level_state import LevelState
 from level.scrolling_background import ScrollingBackground
 from level.level_objective import LevelObjective
 
+# ===== ENEMY =====
+from enemy.enemy_manager import EnemyManager
 
 class LevelManager:
     def __init__(self, save):
@@ -44,6 +46,9 @@ class LevelManager:
         self.checkpoint = None
         self.collisions = []
         self.one_way_platforms = []
+
+        # ================= ENEMY =================
+        self.enemy_manager = EnemyManager()
 
         # ================= INVENTORY (GLOBAL) =================
         self.item_manager = ItemManager()
@@ -113,6 +118,7 @@ class LevelManager:
         self.collisions.clear()
         self.one_way_platforms.clear()
         self.item_manager.clear_level_items()
+        self.enemy_manager.enemies.clear()
 
         self.tmx = load_pygame(self.levels[level_id])
 
@@ -128,7 +134,7 @@ class LevelManager:
         if self.checkpoint and self.is_level_completed(level_id):
             self.checkpoint.force_active()
 
-        # fallback (nếu map không có object Player)
+        # fallback nếu map không có Player object
         if not self.player:
             self.player = Player(
                 32, 32,
@@ -175,7 +181,7 @@ class LevelManager:
 
         self.player = None
         self.checkpoint = None
-
+        tile_size = self.tmx.tilewidth
         character = self.save.get_selected_character()
 
         for obj in self.tmx.objects:
@@ -196,6 +202,15 @@ class LevelManager:
             elif obj.name == "OneWay":
                 self.one_way_platforms.append(
                     pygame.Rect(obj.x, obj.y, obj.width, obj.height)
+                )
+
+            elif obj.type == "Enemy":
+                self.enemy_manager.add(
+                    obj.x,
+                    obj.y,
+                    obj.name,
+                    obj.properties,   # offNeg / offPos lấy từ Tiled
+                    tile_size         # TRUYỀN TILE SIZE THẬT
                 )
 
             elif obj.type == "Items":
@@ -251,6 +266,9 @@ class LevelManager:
             self.one_way_platforms
         )
 
+        # ===== ENEMY =====
+        self.enemy_manager.update(self.player)
+
         self.item_manager.update(
             self.player,
             objective=self.objective
@@ -296,6 +314,10 @@ class LevelManager:
             self.bg.draw(surf)
 
         surf.blit(self.map_surface, (0, 0))
+
+        # ===== ENEMY =====
+        self.enemy_manager.draw(surf)
+
         self.item_manager.draw(surf)
 
         if self.checkpoint:

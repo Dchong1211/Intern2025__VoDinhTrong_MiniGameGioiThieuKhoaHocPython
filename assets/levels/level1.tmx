@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="36" height="20" tilewidth="16" tileheight="16" infinite="0" nextlayerid="8" nextobjectid="64">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="36" height="20" tilewidth="16" tileheight="16" infinite="0" nextlayerid="9" nextobjectid="65">
  <tileset firstgid="1" source="tileset.tsx"/>
  <objectgroup id="5" name="Checkpoints">
   <object id="37" name="Checkpoint" x="496" y="176" width="64" height="64"/>
  </objectgroup>
+ <objectgroup id="8" name="Enemy">
+  <object id="64" name="AngryPig" type="Enemy" x="272" y="192" width="32" height="32">
+   <properties>
+    <property name="offNeg" type="float" value="4"/>
+    <property name="offPos" type="float" value="4"/>
+   </properties>
+  </object>
+ </objectgroup>
  <objectgroup id="2" name="Player">
-  <object id="1" name="Player" x="272" y="192" width="32" height="32"/>
+  <object id="1" name="Player" x="128" y="256" width="32" height="32"/>
  </objectgroup>
  <objectgroup id="6" name="Items"/>
  <objectgroup id="4" name="Collisions">
