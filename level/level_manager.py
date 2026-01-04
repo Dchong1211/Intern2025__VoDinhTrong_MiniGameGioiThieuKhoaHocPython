@@ -12,8 +12,8 @@ from level.level_state import LevelState
 from level.scrolling_background import ScrollingBackground
 from level.level_objective import LevelObjective
 
-# ===== ENEMY =====
 from enemy.enemy_manager import EnemyManager
+
 
 class LevelManager:
     def __init__(self, save):
@@ -50,13 +50,13 @@ class LevelManager:
         # ================= ENEMY =================
         self.enemy_manager = EnemyManager()
 
-        # ================= INVENTORY (GLOBAL) =================
+        # ================= INVENTORY =================
         self.item_manager = ItemManager()
         if not getattr(save, "_fruit_loaded", False):
             self.item_manager.import_data(save.get_fruits())
             save._fruit_loaded = True
 
-        # ================= OBJECTIVE (PER LEVEL) =================
+        # ================= OBJECTIVE =================
         self.objective = LevelObjective()
 
         # ================= BACKGROUND =================
@@ -67,15 +67,24 @@ class LevelManager:
         ]
         self.bg = None
 
-        # ================= STATE =================
-        self.state = LevelState.PLAYING
+        # ================= INTERNAL STATE =================
         self.fade_alpha = 0
         self.fade_speed = 300
+
+        # ================= CODE PHASE =================
+        self.code_lines = [
+            "move_right(3)",
+            "jump()"
+        ]
+        self.code_queue = []
+        self.code_timer = 0
+        self.code_delay = 0.35
+        self.code_running = False
 
         self.load_level(self.current_level)
 
     # ==================================================
-    # ================= PUBLIC API =====================
+    # ================= LEVEL CONTROL ==================
     # ==================================================
 
     def restart_level(self):
@@ -90,12 +99,14 @@ class LevelManager:
     def is_level_completed(self, level_id):
         return self.save.is_level_unlocked(level_id + 1)
 
+    # ==================================================
+    # ================= QUEST CALLBACK =================
+    # ==================================================
+
     def on_quest_success(self):
         self.save.save_fruits(self.item_manager.export_data())
-
         if self.checkpoint:
             self.checkpoint.activate()
-            self.state = LevelState.CHECKPOINT_ANIM
 
     def on_quest_failed(self):
         if self.is_level_completed(self.current_level):
@@ -109,7 +120,6 @@ class LevelManager:
 
     def load_level(self, level_id):
         self.current_level = level_id
-        self.state = LevelState.PLAYING
         self.fade_alpha = 0
 
         self.request_go_home = False
@@ -131,15 +141,16 @@ class LevelManager:
         self._build_map_surface()
         self._load_objects()
 
-        if self.checkpoint and self.is_level_completed(level_id):
-            self.checkpoint.force_active()
-
-        # fallback nếu map không có Player object
         if not self.player:
             self.player = Player(
                 32, 32,
                 self.save.get_selected_character()
             )
+
+        # reset code phase
+        self.code_queue.clear()
+        self.code_timer = 0
+        self.code_running = False
 
     # ==================================================
     # ================= LOAD HELPERS ===================
@@ -178,7 +189,6 @@ class LevelManager:
 
     def _load_objects(self):
         fruit_max = {}
-
         self.player = None
         self.checkpoint = None
         tile_size = self.tmx.tilewidth
@@ -186,10 +196,7 @@ class LevelManager:
 
         for obj in self.tmx.objects:
             if obj.name == "Player":
-                self.player = Player(
-                    obj.x, obj.y,
-                    character
-                )
+                self.player = Player(obj.x, obj.y, character)
 
             elif obj.name == "Checkpoint":
                 self.checkpoint = Checkpoint(obj.x, obj.y)
@@ -209,8 +216,8 @@ class LevelManager:
                     obj.x,
                     obj.y,
                     obj.name,
-                    obj.properties,   # offNeg / offPos lấy từ Tiled
-                    tile_size         # TRUYỀN TILE SIZE THẬT
+                    obj.properties,
+                    tile_size
                 )
 
             elif obj.type == "Items":
@@ -220,10 +227,82 @@ class LevelManager:
         self.objective.generate(fruit_max)
 
     # ==================================================
-    # ================= UPDATE =========================
+    # ================= PHASE: CODE ====================
     # ==================================================
 
-    def update(self, dt, keys):
+    def update_code_phase(self, dt):
+        if self.bg:
+            self.bg.update(dt)
+
+        if not self.code_running:
+            self._parse_code()
+            self.code_running = True
+
+        self.code_timer += dt
+        if self.code_timer >= self.code_delay and self.code_queue:
+            cmd = self.code_queue.pop(0)
+            self._execute_command(cmd)
+            self.code_timer = 0
+
+        if not self.code_queue and self.code_running:
+            self.code_running = False
+            # chuyển sang phase chơi tay
+            from ui.game_state import GameState
+            import pygame
+            pygame.event.post(
+                pygame.event.Event(
+                    pygame.USEREVENT,
+                    {"next_state": GameState.LEVEL_PLAY}
+                )
+            )
+
+    def _parse_code(self):
+        self.code_queue.clear()
+        for line in self.code_lines:
+            line = line.strip()
+
+            if line.startswith("move_right"):
+                steps = int(line[line.find("(")+1:line.find(")")])
+                self.code_queue.append(("MOVE", steps))
+
+            elif line.startswith("move_left"):
+                steps = int(line[line.find("(")+1:line.find(")")])
+                self.code_queue.append(("MOVE", -steps))
+
+            elif line == "jump()":
+                self.code_queue.append(("JUMP", 1))
+
+    def _execute_command(self, cmd):
+        if cmd[0] == "MOVE":
+            self.player.rect.x += cmd[1] * self.tw
+        elif cmd[0] == "JUMP":
+            self.player.velocity_y = -self.player.jump_force
+
+    def draw_code_ui(self, screen):
+        panel = pygame.Rect(
+            screen.get_width() - 360,
+            0,
+            360,
+            screen.get_height()
+        )
+
+        pygame.draw.rect(screen, (25, 25, 35), panel)
+
+        font = pygame.font.Font(
+            "assets/Font/FVF Fernando 08.ttf", 18
+        )
+
+        y = 20
+        for line in self.code_lines:
+            text = font.render(line, True, (200, 200, 220))
+            screen.blit(text, (panel.x + 20, y))
+            y += 28
+
+    # ==================================================
+    # ================= PHASE: PLAY ====================
+    # ==================================================
+
+    def update_play_phase(self, dt, keys):
         if self.bg:
             self.bg.update(dt)
 
@@ -233,40 +312,12 @@ class LevelManager:
         if self.quest_panel and self.quest_panel.visible:
             return
 
-        if self.state == LevelState.PLAYING:
-            self._update_playing(dt, keys)
-
-        elif self.state == LevelState.CHECKPOINT_ANIM:
-            if self.checkpoint.animation_finished():
-                self.state = LevelState.FADING_OUT
-
-        elif self.state == LevelState.FADING_OUT:
-            self.fade_alpha = min(
-                255,
-                self.fade_alpha + self.fade_speed * dt
-            )
-            if self.fade_alpha >= 255:
-                self.state = LevelState.LOADING
-
-        elif self.state == LevelState.LOADING:
-            self._load_next_level()
-
-        elif self.state == LevelState.FADING_IN:
-            self.fade_alpha = max(
-                0,
-                self.fade_alpha - self.fade_speed * dt
-            )
-            if self.fade_alpha <= 0:
-                self.state = LevelState.PLAYING
-
-    def _update_playing(self, dt, keys):
         self.player.update(
             dt, keys,
             self.collisions,
             self.one_way_platforms
         )
 
-        # ===== ENEMY =====
         self.enemy_manager.update(self.player)
 
         self.item_manager.update(
@@ -274,39 +325,8 @@ class LevelManager:
             objective=self.objective
         )
 
-        if not self.checkpoint:
-            return
-
-        self.checkpoint.ready = (
-            True if self.checkpoint.active
-            else self.objective.is_completed()
-        )
-
-        inside = self.player.rect.colliderect(self.checkpoint.rect)
-
-        if inside and not self.checkpoint.player_inside:
-            if not self.checkpoint.active:
-                if self.is_level_completed(self.current_level):
-                    self.checkpoint.activate()
-                    self.state = LevelState.CHECKPOINT_ANIM
-                elif self.quest_panel:
-                    self.checkpoint.on_player_touch(self.quest_panel)
-            else:
-                self.state = LevelState.CHECKPOINT_ANIM
-
-        self.checkpoint.player_inside = inside
-
-    def _load_next_level(self):
-        next_level = self.current_level + 1
-        if next_level in self.levels:
-            self.save.unlock_level(next_level)
-            self.load_level(next_level)
-            self.state = LevelState.FADING_IN
-        else:
-            self.state = LevelState.PLAYING
-
     # ==================================================
-    # ================= DRAW ===========================
+    # ================= DRAW WORLD =====================
     # ==================================================
 
     def draw(self, surf):
@@ -314,10 +334,7 @@ class LevelManager:
             self.bg.draw(surf)
 
         surf.blit(self.map_surface, (0, 0))
-
-        # ===== ENEMY =====
         self.enemy_manager.draw(surf)
-
         self.item_manager.draw(surf)
 
         if self.checkpoint:

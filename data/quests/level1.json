@@ -1,13 +1,18 @@
 {
-  "id": "level1_quest",
-  "question": "Kỹ năng nào cho phép nhân vật nhảy lần hai?",
-  "choices": {
-    "A": "Dash",
-    "B": "Double Jump",
-    "C": "Wall Slide",
-    "D": "Không có kỹ năng nào"
-  },
-  "answer": "B",
-  "key_quest": true,
-  "unlock_skill": "double_jump"
+  "title": "Di chuyển và nhảy cơ bản",
+
+  "instruction": [
+    "Hãy điều khiển nhân vật đi sang phải để thu thập trái cây.",
+    "Sau đó sử dụng lệnh jump để nhảy lên platform phía trên."
+  ],
+
+  "hint": [
+    "Lệnh move_right(n) giúp nhân vật đi sang phải n bước.",
+    "Lệnh jump() giúp nhân vật nhảy lên cao."
+  ],
+
+  "solution": [
+    "move_right(3)",
+    "jump()"
+  ]
 }

@@ -3,7 +3,6 @@ import pygame
 
 from data.save_manager import SaveManager
 from level.level_manager import LevelManager
-from level.quest_manager import QuestManager
 
 from characters.character_manager import CharacterManager
 from characters.character_select import CharacterSelect
@@ -12,7 +11,6 @@ from ui.game_state import GameState
 from ui.main_menu import MainMenu
 from ui.level_select import LevelSelect
 from ui.hud import HUD
-from ui.quest_panel import QuestPanel
 from ui.square_transition import SquareTransition
 
 pygame.init()
@@ -164,11 +162,11 @@ while running:
                 transition.start_close()
 
             elif isinstance(result, int) and not transition.is_active():
-                next_state = GameState.PLAYING
+                next_state = GameState.LEVEL_PLAY
                 next_level = result
                 transition.start_close()
 
-        elif state == GameState.PLAYING:
+        elif state == GameState.LEVEL_PLAY:
             # ===== HUD SETTING ACTIONS =====
             action = hud.handle_event(event)
 
@@ -181,7 +179,7 @@ while running:
                 transition.start_close()
 
             elif action == "RESTART" and not transition.is_active():
-                next_state = GameState.PLAYING
+                next_state = GameState.LEVEL_PLAY
                 next_level = level_manager.current_level
                 transition.start_close()
 
@@ -194,9 +192,10 @@ while running:
                 quest_panel.handle_event(event)
 
     # ================= UPDATE =================
-    if state == GameState.PLAYING:
+    if state == GameState.LEVEL_PLAY:
         keys = pygame.key.get_pressed()
-        level_manager.update(dt, keys)
+        level_manager.update_play_phase(dt, keys)
+
 
         if level_manager.request_go_home:
             next_state = GameState.MENU
@@ -214,7 +213,7 @@ while running:
     if transition.is_closed() and next_state:
         state = next_state
 
-        if state == GameState.PLAYING and next_level:
+        if state == GameState.LEVEL_PLAY and next_level:
             level_manager.load_level(next_level)
 
             hud = HUD(
@@ -223,13 +222,6 @@ while running:
             )
 
             quest_path = f"data/quests/level{next_level}.json"
-            quest_manager = QuestManager(quest_path)
-
-            quest_panel = QuestPanel(
-                quest_manager,
-                level_manager.player.skills,
-                level_manager
-            )
 
             level_manager.quest_panel = quest_panel
             next_level = None
@@ -249,7 +241,7 @@ while running:
         level_select.update(dt)
         level_select.draw(screen, dt)
 
-    elif state == GameState.PLAYING:
+    elif state == GameState.LEVEL_PLAY:
         world.fill((20, 20, 25))
         level_manager.draw(world)
 
