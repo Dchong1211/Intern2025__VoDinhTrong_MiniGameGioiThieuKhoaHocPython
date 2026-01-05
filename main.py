@@ -120,8 +120,6 @@ while running:
 
         # ===== KEY =====
         elif event.type == pygame.KEYDOWN:
-
-            # FULLSCREEN
             if event.key == pygame.K_F11:
                 fullscreen = not fullscreen
 
@@ -136,6 +134,7 @@ while running:
                 transition.resize(screen.get_size())
                 level_select.on_resize(screen)
                 code_panel.on_resize(*screen.get_size())
+
 
             # ESC: ƯU TIÊN ĐÓNG PANEL
             elif event.key == pygame.K_ESCAPE:
@@ -184,12 +183,10 @@ while running:
             mission_panel.handle_event(event)
             result = code_panel.handle_event(event)
             if isinstance(result, list):
-                level_manager.run_code(result)
-                code_panel.close()  # 🔒 đóng IDE khi code chạy
-            # 🔥 RUN CODE TỪ IDE
-            if isinstance(result, list):
                 print("🔥 RUN CODE:", result)
                 level_manager.run_code(result)
+                code_panel.close()
+
 
             if action == "HOME" and not transition.is_active():
                 next_state = GameState.MENU

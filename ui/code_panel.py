@@ -383,3 +383,20 @@ class CodePanel:
             max_text_w,
             (230, 230, 240),
         )
+    def on_resize(self, screen_w, screen_h):
+        # cập nhật scale theo chiều cao
+        self.scale = screen_h / self.base_height
+
+        self.width = int(self.base_width * self.scale)
+        self.height = screen_h
+
+        # cập nhật vị trí panel
+        self.hidden_x = screen_w
+        self.visible_x = screen_w - self.width
+
+        if self.opened:
+            self.x = self.visible_x
+            self.target_x = self.visible_x
+        else:
+            self.x = self.hidden_x
+            self.target_x = self.hidden_x
