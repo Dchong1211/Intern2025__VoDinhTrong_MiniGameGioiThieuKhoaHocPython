@@ -72,10 +72,6 @@ class LevelManager:
         self.fade_speed = 300
 
         # ================= CODE PHASE =================
-        self.code_lines = [
-            "move_right(3)",
-            "jump()"
-        ]
         self.code_queue = []
         self.code_timer = 0
         self.code_delay = 0.35
@@ -231,30 +227,19 @@ class LevelManager:
     # ==================================================
 
     def update_code_phase(self, dt):
-        if self.bg:
-            self.bg.update(dt)
-
         if not self.code_running:
-            self._parse_code()
-            self.code_running = True
+            return
 
         self.code_timer += dt
+
         if self.code_timer >= self.code_delay and self.code_queue:
-            cmd = self.code_queue.pop(0)
-            self._execute_command(cmd)
+            cmd, value = self.code_queue.pop(0)
+            self._execute_command(cmd, value)
             self.code_timer = 0
 
-        if not self.code_queue and self.code_running:
+        if not self.code_queue:
             self.code_running = False
-            # chuyển sang phase chơi tay
-            from ui.game_state import GameState
-            import pygame
-            pygame.event.post(
-                pygame.event.Event(
-                    pygame.USEREVENT,
-                    {"next_state": GameState.LEVEL_PLAY}
-                )
-            )
+
 
     def _parse_code(self):
         self.code_queue.clear()
@@ -272,11 +257,38 @@ class LevelManager:
             elif line == "jump()":
                 self.code_queue.append(("JUMP", 1))
 
-    def _execute_command(self, cmd):
-        if cmd[0] == "MOVE":
-            self.player.rect.x += cmd[1] * self.tw
-        elif cmd[0] == "JUMP":
+    def run_code(self, code_lines: list[str]):
+        """
+        Nhận code từ CodePanel IDE
+        """
+        self.code_queue.clear()
+        self.code_timer = 0
+        self.code_running = True
+
+        for line in code_lines:
+            line = line.strip()
+
+            if not line:
+                continue
+
+            if line.startswith("move_right"):
+                steps = int(line[line.find("(")+1:line.find(")")])
+                self.code_queue.append(("MOVE", steps))
+
+            elif line.startswith("move_left"):
+                steps = int(line[line.find("(")+1:line.find(")")])
+                self.code_queue.append(("MOVE", -steps))
+
+            elif line == "jump()":
+                self.code_queue.append(("JUMP", 1))
+                
+    def _execute_command(self, cmd, value):
+        if cmd == "MOVE":
+            self.player.rect.x += value * self.tw
+
+        elif cmd == "JUMP":
             self.player.velocity_y = -self.player.jump_force
+
 
     def draw_code_ui(self, screen):
         panel = pygame.Rect(

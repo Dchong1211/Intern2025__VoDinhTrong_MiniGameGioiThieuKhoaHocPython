@@ -119,8 +119,8 @@ class Player:
 
         self.vel_x = 0
 
-        left = keys[pygame.K_a] or keys[pygame.K_LEFT]
-        right = keys[pygame.K_d] or keys[pygame.K_RIGHT]
+        left = keys[pygame.K_a]
+        right = keys[pygame.K_d]
 
         if left and self.skills.has("move"):
             self.vel_x = -self.speed

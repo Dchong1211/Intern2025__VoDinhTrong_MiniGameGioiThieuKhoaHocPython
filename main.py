@@ -184,8 +184,10 @@ while running:
             mission_panel.handle_event(event)
             result = code_panel.handle_event(event)
 
-            if result == "RUN":
-                print("🔥 RUN CODE")
+            # 🔥 RUN CODE TỪ IDE
+            if isinstance(result, list):
+                print("🔥 RUN CODE:", result)
+                level_manager.run_code(result)
 
             if action == "HOME" and not transition.is_active():
                 next_state = GameState.MENU

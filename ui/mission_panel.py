@@ -33,11 +33,11 @@ class MissionPanel:
         self.btn_rect = pygame.Rect(0, 0, self.btn_size, self.btn_size)
 
         self.btn_show = pygame.transform.scale(
-            pygame.image.load("assets/Menu/Buttons/Show.png").convert_alpha(),
+            pygame.image.load("assets/Menu/Buttons/Hide.png").convert_alpha(),
             (self.btn_size, self.btn_size)
         )
         self.btn_hide = pygame.transform.scale(
-            pygame.image.load("assets/Menu/Buttons/Hide.png").convert_alpha(),
+            pygame.image.load("assets/Menu/Buttons/Show.png").convert_alpha(),
             (self.btn_size, self.btn_size)
         )
 

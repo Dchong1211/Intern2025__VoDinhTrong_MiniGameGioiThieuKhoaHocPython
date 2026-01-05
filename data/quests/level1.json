@@ -1,18 +1,23 @@
 {
   "title": "Di chuyển và nhảy cơ bản",
-
   "instruction": [
     "Hãy điều khiển nhân vật đi sang phải để thu thập trái cây.",
     "Sau đó sử dụng lệnh jump để nhảy lên platform phía trên."
   ],
-
-  "hint": [
-    "Lệnh move_right(n) giúp nhân vật đi sang phải n bước.",
-    "Lệnh jump() giúp nhân vật nhảy lên cao."
-  ],
-
   "solution": [
     "move_right(3)",
     "jump()"
-  ]
+  ],
+  "hint": {
+    "title": "Hàm move_right và jump",
+    "description": [
+      "move_right(n): Di chuyển nhân vật sang phải n bước.",
+      "jump(): Giúp nhân vật nhảy lên platform cao hơn."
+    ],
+    "examples": [
+      "move_right(1)",
+      "move_right(3)",
+      "jump()"
+    ]
+  }
 }
