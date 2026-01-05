@@ -50,10 +50,10 @@ class CodePanel:
 
         # ================= BUTTON: TOGGLE =================
         self.btn_open_img = pygame.image.load(
-            "assets/Menu/Buttons/Hide.png"
+            "assets/Menu/Buttons/Show.png"
         ).convert_alpha()
         self.btn_close_img = pygame.image.load(
-            "assets/Menu/Buttons/Show.png"
+            "assets/Menu/Buttons/Hide.png"
         ).convert_alpha()
 
         self.btn_open_img = pygame.transform.scale(

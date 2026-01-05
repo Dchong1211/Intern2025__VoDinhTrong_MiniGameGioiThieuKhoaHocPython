@@ -11,7 +11,9 @@ from ui.game_state import GameState
 from ui.main_menu import MainMenu
 from ui.level_select import LevelSelect
 from ui.hud import HUD
+from ui.mission_panel import MissionPanel
 from ui.square_transition import SquareTransition
+from ui.code_panel import CodePanel
 
 pygame.init()
 pygame.mixer.init()
@@ -38,7 +40,7 @@ save = SaveManager()
 # ================= LEVEL MANAGER =================
 level_manager = LevelManager(save)
 
-# ===== LOAD FRUITS TỪ SAVE (🔥 RẤT QUAN TRỌNG) =====
+# ===== LOAD FRUITS TỪ SAVE =====
 saved_fruits = save.get_fruits()
 level_manager.item_manager.import_data(saved_fruits)
 
@@ -66,12 +68,18 @@ level_select = LevelSelect(save)
 WORLD_W, WORLD_H = level_manager.map_w, level_manager.map_h
 world = pygame.Surface((WORLD_W, WORLD_H), pygame.SRCALPHA)
 
-hud = HUD(
-    level_manager.item_manager,
-    level_manager.objective
+# ===== HUD =====
+hud = HUD(level_manager.item_manager)
+
+# ===== MISSION PANEL (SLIDE X – LEFT → RIGHT) =====
+mission_panel = MissionPanel(
+    screen.get_width(),
+    level_manager.objective,
+    hud.icons
 )
 
-quest_panel = None
+# ===== CODE PANEL (SLIDE X – RIGHT → LEFT) =====
+code_panel = CodePanel(BASE_W, BASE_H)
 
 # ================= TRANSITION =================
 transition = SquareTransition(screen.get_size())
@@ -103,27 +111,23 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        # ===== WINDOW RESIZE =====
-        elif event.type == pygame.VIDEORESIZE:
-            if not fullscreen:
-                screen = pygame.display.set_mode(
-                    event.size, pygame.RESIZABLE
-                )
-                transition.resize(event.size)
-                level_select.on_resize(screen)
+        # ===== RESIZE =====
+        elif event.type == pygame.VIDEORESIZE and not fullscreen:
+            screen = pygame.display.set_mode(event.size, pygame.RESIZABLE)
+            transition.resize(event.size)
+            level_select.on_resize(screen)
+            code_panel.on_resize(*event.size)
 
-        # ===== KEY INPUT =====
+        # ===== KEY =====
         elif event.type == pygame.KEYDOWN:
 
-            # ===== TOGGLE FULLSCREEN =====
+            # FULLSCREEN
             if event.key == pygame.K_F11:
                 fullscreen = not fullscreen
 
                 if fullscreen:
                     windowed_size = screen.get_size()
-                    screen = pygame.display.set_mode(
-                        (0, 0), pygame.FULLSCREEN
-                    )
+                    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
                 else:
                     screen = pygame.display.set_mode(
                         windowed_size, pygame.RESIZABLE
@@ -131,9 +135,17 @@ while running:
 
                 transition.resize(screen.get_size())
                 level_select.on_resize(screen)
+                code_panel.on_resize(*screen.get_size())
 
-            elif event.key == pygame.K_j:
-                hud.show_objectives = not hud.show_objectives
+            # ESC: ƯU TIÊN ĐÓNG PANEL
+            elif event.key == pygame.K_ESCAPE:
+                if code_panel.opened:
+                    code_panel.close()
+                elif mission_panel.opened:
+                    mission_panel.close()
+                elif state == GameState.LEVEL_PLAY:
+                    next_state = GameState.LEVEL_SELECT
+                    transition.start_close()
 
         # ===== UI EVENTS =====
         if state == GameState.MENU:
@@ -144,11 +156,9 @@ while running:
 
         elif state == GameState.CHARACTER_SELECT:
             char_select.handle_event(event)
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    next_state = GameState.LEVEL_SELECT
-                    transition.start_close()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                next_state = GameState.LEVEL_SELECT
+                transition.start_close()
 
         elif state == GameState.LEVEL_SELECT:
             result = level_select.handle_event(event, screen)
@@ -167,8 +177,15 @@ while running:
                 transition.start_close()
 
         elif state == GameState.LEVEL_PLAY:
-            # ===== HUD SETTING ACTIONS =====
+            # ===== HUD EVENTS =====
             action = hud.handle_event(event)
+
+            # ===== PANEL EVENTS =====
+            mission_panel.handle_event(event)
+            result = code_panel.handle_event(event)
+
+            if result == "RUN":
+                print("🔥 RUN CODE")
 
             if action == "HOME" and not transition.is_active():
                 next_state = GameState.MENU
@@ -188,14 +205,13 @@ while running:
                     1.0 if hud.sound_on else 0.0
                 )
 
-            if quest_panel:
-                quest_panel.handle_event(event)
-
     # ================= UPDATE =================
     if state == GameState.LEVEL_PLAY:
         keys = pygame.key.get_pressed()
         level_manager.update_play_phase(dt, keys)
 
+        mission_panel.update(dt)
+        code_panel.update(dt)
 
         if level_manager.request_go_home:
             next_state = GameState.MENU
@@ -216,14 +232,19 @@ while running:
         if state == GameState.LEVEL_PLAY and next_level:
             level_manager.load_level(next_level)
 
-            hud = HUD(
-                level_manager.item_manager,
-                level_manager.objective
+            hud = HUD(level_manager.item_manager)
+            mission_panel = MissionPanel(
+                screen.get_width(),
+                level_manager.objective,
+                hud.icons
             )
+            mission_panel.open()
+
 
             quest_path = f"data/quests/level{next_level}.json"
+            code_panel.load_from_json(quest_path)
+            code_panel.close()
 
-            level_manager.quest_panel = quest_panel
             next_level = None
 
         next_state = None
@@ -246,10 +267,10 @@ while running:
         level_manager.draw(world)
 
         draw_scaled_world()
-        hud.draw(screen)
 
-        if quest_panel:
-            quest_panel.draw(screen)
+        hud.draw(screen)
+        mission_panel.draw(screen)
+        code_panel.draw(screen)
 
     transition.draw(screen)
     pygame.display.flip()
