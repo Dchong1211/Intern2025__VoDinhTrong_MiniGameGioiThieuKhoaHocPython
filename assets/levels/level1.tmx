@@ -13,7 +13,7 @@
   </object>
  </objectgroup>
  <objectgroup id="2" name="Player">
-  <object id="1" name="Player" x="128" y="256" width="32" height="32"/>
+  <object id="1" name="Player" x="112" y="256" width="32" height="32"/>
  </objectgroup>
  <objectgroup id="6" name="Items"/>
  <objectgroup id="4" name="Collisions">
@@ -21,12 +21,9 @@
   <object id="3" name="Collision" x="0" y="16" width="16" height="288"/>
   <object id="4" name="Collision" x="0" y="304" width="576" height="16"/>
   <object id="11" name="Collision" x="560" y="16" width="16" height="288"/>
-  <object id="12" name="Cherries" type="Items" x="80" y="256" width="32" height="32"/>
   <object id="28" name="Pineapple" type="Items" x="528" y="80" width="32" height="32"/>
   <object id="29" name="Pineapple" type="Items" x="528" y="112" width="32" height="32"/>
   <object id="30" name="Pineapple" type="Items" x="528" y="144" width="32" height="32"/>
-  <object id="34" name="Cherries" type="Items" x="112" y="256" width="32" height="32"/>
-  <object id="35" name="Cherries" type="Items" x="144" y="256" width="32" height="32"/>
   <object id="41" name="Apple" type="Items" x="112" y="112" width="32" height="32"/>
   <object id="42" name="Apple" type="Items" x="144" y="112" width="32" height="32"/>
   <object id="43" name="Apple" type="Items" x="176" y="112" width="32" height="32"/>

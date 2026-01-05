@@ -71,12 +71,6 @@ class LevelManager:
         self.fade_alpha = 0
         self.fade_speed = 300
 
-        # ================= CODE PHASE =================
-        self.code_queue = []
-        self.code_timer = 0
-        self.code_delay = 0.35
-        self.code_running = False
-
         self.load_level(self.current_level)
 
     # ==================================================
@@ -142,11 +136,6 @@ class LevelManager:
                 32, 32,
                 self.save.get_selected_character()
             )
-
-        # reset code phase
-        self.code_queue.clear()
-        self.code_timer = 0
-        self.code_running = False
 
     # ==================================================
     # ================= LOAD HELPERS ===================
@@ -225,90 +214,16 @@ class LevelManager:
     # ==================================================
     # ================= PHASE: CODE ====================
     # ==================================================
-
-    def update_code_phase(self, dt):
-        if not self.code_running:
-            return
-
-        self.code_timer += dt
-
-        if self.code_timer >= self.code_delay and self.code_queue:
-            cmd, value = self.code_queue.pop(0)
-            self._execute_command(cmd, value)
-            self.code_timer = 0
-
-        if not self.code_queue:
-            self.code_running = False
-
-
-    def _parse_code(self):
-        self.code_queue.clear()
-        for line in self.code_lines:
-            line = line.strip()
-
-            if line.startswith("move_right"):
-                steps = int(line[line.find("(")+1:line.find(")")])
-                self.code_queue.append(("MOVE", steps))
-
-            elif line.startswith("move_left"):
-                steps = int(line[line.find("(")+1:line.find(")")])
-                self.code_queue.append(("MOVE", -steps))
-
-            elif line == "jump()":
-                self.code_queue.append(("JUMP", 1))
-
     def run_code(self, code_lines: list[str]):
         """
-        Nhận code từ CodePanel IDE
+        Nhận code từ CodePanel và chuyển cho Player
         """
-        self.code_queue.clear()
-        self.code_timer = 0
-        self.code_running = True
+        if not self.player:
+            return
 
-        for line in code_lines:
-            line = line.strip()
+        # 🔒 BẮT ĐẦU CODE PHASE Ở PLAYER
+        self.player.start_code_phase(code_lines)
 
-            if not line:
-                continue
-
-            if line.startswith("move_right"):
-                steps = int(line[line.find("(")+1:line.find(")")])
-                self.code_queue.append(("MOVE", steps))
-
-            elif line.startswith("move_left"):
-                steps = int(line[line.find("(")+1:line.find(")")])
-                self.code_queue.append(("MOVE", -steps))
-
-            elif line == "jump()":
-                self.code_queue.append(("JUMP", 1))
-                
-    def _execute_command(self, cmd, value):
-        if cmd == "MOVE":
-            self.player.rect.x += value * self.tw
-
-        elif cmd == "JUMP":
-            self.player.velocity_y = -self.player.jump_force
-
-
-    def draw_code_ui(self, screen):
-        panel = pygame.Rect(
-            screen.get_width() - 360,
-            0,
-            360,
-            screen.get_height()
-        )
-
-        pygame.draw.rect(screen, (25, 25, 35), panel)
-
-        font = pygame.font.Font(
-            "assets/Font/FVF Fernando 08.ttf", 18
-        )
-
-        y = 20
-        for line in self.code_lines:
-            text = font.render(line, True, (200, 200, 220))
-            screen.blit(text, (panel.x + 20, y))
-            y += 28
 
     # ==================================================
     # ================= PHASE: PLAY ====================

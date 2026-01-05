@@ -183,7 +183,9 @@ while running:
             # ===== PANEL EVENTS =====
             mission_panel.handle_event(event)
             result = code_panel.handle_event(event)
-
+            if isinstance(result, list):
+                level_manager.run_code(result)
+                code_panel.close()  # 🔒 đóng IDE khi code chạy
             # 🔥 RUN CODE TỪ IDE
             if isinstance(result, list):
                 print("🔥 RUN CODE:", result)
@@ -273,6 +275,9 @@ while running:
         hud.draw(screen)
         mission_panel.draw(screen)
         code_panel.draw(screen)
+
+        # 🔥 POPUP PHẢI VẼ SAU CÙNG
+        code_panel.draw_hint_popup(screen)
 
     transition.draw(screen)
     pygame.display.flip()
