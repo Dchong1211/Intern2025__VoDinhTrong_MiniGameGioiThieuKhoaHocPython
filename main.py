@@ -14,9 +14,11 @@ from ui.hud import HUD
 from ui.mission_panel import MissionPanel
 from ui.square_transition import SquareTransition
 from ui.code_panel import CodePanel
-
 pygame.init()
-pygame.mixer.init()
+pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+
+from audio.sound_manager import SoundManager
+sound = SoundManager()
 
 # ================= WINDOW =================
 BASE_W, BASE_H = 1280, 720
@@ -63,6 +65,9 @@ next_level = None
 # ================= UI =================
 menu = MainMenu()
 level_select = LevelSelect(save)
+
+sound.play_music("assets/sounds/bgm.ogg")
+
 
 # ================= WORLD =================
 WORLD_W, WORLD_H = level_manager.map_w, level_manager.map_h
@@ -178,7 +183,9 @@ while running:
 
         elif state == GameState.LEVEL_PLAY:
             # ===== HUD EVENTS =====
+            hud.update(dt)
             action = hud.handle_event(event)
+
 
             # ===== PANEL EVENTS =====
             mission_panel.handle_event(event)
@@ -203,9 +210,15 @@ while running:
                 transition.start_close()
 
             elif action == "TOGGLE_SOUND":
-                pygame.mixer.music.set_volume(
-                    1.0 if hud.sound_on else 0.0
-                )
+                if sound.enabled:
+                    sound.mute()
+                    hud.sound_on = False   # 🔥 CẬP NHẬT HUD
+                else:
+                    sound.unmute()
+                    hud.sound_on = True    # 🔥 CẬP NHẬT HUD
+
+
+
 
     # ================= UPDATE =================
     if state == GameState.LEVEL_PLAY:
@@ -270,7 +283,7 @@ while running:
 
         draw_scaled_world()
 
-        hud.draw(screen)
+        hud.draw(screen, dt)
         mission_panel.draw(screen)
         code_panel.draw(screen)
 

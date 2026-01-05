@@ -5,8 +5,7 @@
     "Sau đó sử dụng lệnh jump để nhảy lên platform phía trên."
   ],
   "solution": [
-    "move_right(3)",
-    "jump()"
+    ""
   ],
   "hint": {
     "title": "Hàm move_right và jump",
