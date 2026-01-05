@@ -97,6 +97,10 @@ class Player:
         self.skills = Skills()
         self.facing_right = True
 
+        self.code_active = False
+        self.command_queue = []
+        self.current_command = None
+
     # ==================================================
     # LOAD ANIMATION (HỖ TRỢ NHIỀU SIZE)
     # ==================================================
@@ -117,7 +121,8 @@ class Player:
         if self.control_lock or self.dash_timer > 0:
             return
 
-        self.vel_x = 0
+        if not self.code_active:
+            self.vel_x = 0
 
         left = keys[pygame.K_a]
         right = keys[pygame.K_d]
@@ -180,7 +185,13 @@ class Player:
             self._handle_respawn_flow()
             return
 
-        self._handle_input(keys)
+        if self.code_active:
+            self._handle_code_control()
+        else:
+            if keys is not None:
+                self._handle_input(keys)
+
+
 
         if self.invincible:
             self.invincible_timer -= 1
@@ -363,3 +374,15 @@ class Player:
 
         img_rect = img.get_rect(center=self.rect.center)
         surf.blit(img, img_rect)
+    def enqueue_command(self, command):
+        self.command_queue.append(command)
+        
+    def _handle_code_control(self):
+        if not self.current_command and self.command_queue:
+            self.current_command = self.command_queue.pop(0)
+            self.current_command.start(self)
+
+        if self.current_command:
+            done = self.current_command.update(self)
+            if done:
+                self.current_command = None

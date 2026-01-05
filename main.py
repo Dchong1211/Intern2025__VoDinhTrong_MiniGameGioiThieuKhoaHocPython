@@ -228,6 +228,9 @@ while running:
     # ================= UPDATE =================
     if state == GameState.LEVEL_PLAY:
         keys = pygame.key.get_pressed()
+        
+        if code_panel.opened:
+            keys = None
         level_manager.update(dt, keys)
 
         mission_panel.update(dt)
@@ -252,6 +255,9 @@ while running:
         if state == GameState.LEVEL_PLAY and next_level:
             level_manager.load_level(next_level)
 
+            WORLD_W, WORLD_H = level_manager.map_w, level_manager.map_h
+            world = pygame.Surface((WORLD_W, WORLD_H), pygame.SRCALPHA)
+
             hud = HUD(level_manager.item_manager)
             mission_panel = MissionPanel(
                 screen.get_width(),
@@ -259,6 +265,7 @@ while running:
                 hud.icons
             )
             mission_panel.open()
+
 
 
             quest_path = f"data/quests/level{next_level}.json"

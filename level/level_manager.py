@@ -11,6 +11,7 @@ from level.checkpoint import Checkpoint
 from level.level_state import LevelState
 from level.scrolling_background import ScrollingBackground
 from level.level_objective import LevelObjective
+from gameplay.code_runner import CodeRunner
 
 # ===== ENEMY =====
 from enemy.enemy_manager import EnemyManager
@@ -131,15 +132,19 @@ class LevelManager:
         self._build_map_surface()
         self._load_objects()
 
-        if self.checkpoint and self.is_level_completed(level_id):
-            self.checkpoint.force_active()
-
         # fallback nếu map không có Player object
         if not self.player:
             self.player = Player(
                 32, 32,
                 self.save.get_selected_character()
             )
+
+        # ===== SAU KHI PLAYER ĐÃ CHẮC CHẮN TỒN TẠI =====
+        self.code_runner = CodeRunner(self.player)
+
+        if self.checkpoint and self.is_level_completed(level_id):
+            self.checkpoint.force_active()
+
 
     # ==================================================
     # ================= LOAD HELPERS ===================
@@ -260,20 +265,38 @@ class LevelManager:
                 self.state = LevelState.PLAYING
 
     def _update_playing(self, dt, keys):
-        self.player.update(
-            dt, keys,
-            self.collisions,
-            self.one_way_platforms
-        )
+        # ===== CODE PHASE CONTROLLER =====
+        if self.code_runner:
+            self.code_runner.update()
+
+        # ===== PLAYER UPDATE (PHASE SWITCH) =====
+        if self.player.code_active:
+            # Phase 1: điều khiển bằng code → khóa bàn phím
+            self.player.update(
+                dt,
+                None,
+                self.collisions,
+                self.one_way_platforms
+            )
+        else:
+            # Phase 2: điều khiển bằng bàn phím
+            self.player.update(
+                dt,
+                keys,
+                self.collisions,
+                self.one_way_platforms
+            )
 
         # ===== ENEMY =====
         self.enemy_manager.update(self.player)
 
+        # ===== ITEMS / OBJECTIVE =====
         self.item_manager.update(
             self.player,
             objective=self.objective
         )
 
+        # ===== CHECKPOINT =====
         if not self.checkpoint:
             return
 
@@ -295,6 +318,7 @@ class LevelManager:
                 self.state = LevelState.CHECKPOINT_ANIM
 
         self.checkpoint.player_inside = inside
+
 
     def _load_next_level(self):
         next_level = self.current_level + 1
@@ -330,3 +354,8 @@ class LevelManager:
             fade.fill((0, 0, 0))
             fade.set_alpha(int(self.fade_alpha))
             surf.blit(fade, (0, 0))
+    def run_code(self, lines):
+        if not self.player or not self.code_runner:
+            return
+
+        self.code_runner.load(lines)
