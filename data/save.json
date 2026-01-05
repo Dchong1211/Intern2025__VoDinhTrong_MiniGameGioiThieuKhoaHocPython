@@ -1,13 +1,13 @@
 {
     "fruits": {
         "count": {
-            "Apple": 8,
+            "Apple": 72,
             "Bananas": 0,
-            "Cherries": 2,
+            "Cherries": 7,
             "Kiwi": 0,
             "Melon": 0,
-            "Orange": 11,
-            "Pineapple": 6,
+            "Orange": 71,
+            "Pineapple": 36,
             "Strawberry": 0
         },
         "discovered": {
@@ -25,7 +25,8 @@
         "unlocked": [
             1,
             2,
-            3
+            3,
+            4
         ]
     },
     "characters": {
