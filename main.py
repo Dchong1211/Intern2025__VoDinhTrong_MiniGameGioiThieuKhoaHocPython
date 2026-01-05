@@ -156,12 +156,14 @@ while running:
         if state == GameState.MENU:
             result = menu.handle_event(event, screen)
             if result == "PLAY" and not transition.is_active():
+                sound.play_sfx("click")
                 next_state = GameState.LEVEL_SELECT
                 transition.start_close()
 
         elif state == GameState.CHARACTER_SELECT:
             char_select.handle_event(event)
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                sound.play_sfx("click")
                 next_state = GameState.LEVEL_SELECT
                 transition.start_close()
 
@@ -169,14 +171,17 @@ while running:
             result = level_select.handle_event(event, screen)
 
             if result == "BACK" and not transition.is_active():
+                sound.play_sfx("click")
                 next_state = GameState.MENU
                 transition.start_close()
 
             elif result == "CHARACTER" and not transition.is_active():
+                sound.play_sfx("click")
                 next_state = GameState.CHARACTER_SELECT
                 transition.start_close()
 
             elif isinstance(result, int) and not transition.is_active():
+                sound.play_sfx("click")
                 next_state = GameState.LEVEL_PLAY
                 next_level = result
                 transition.start_close()
