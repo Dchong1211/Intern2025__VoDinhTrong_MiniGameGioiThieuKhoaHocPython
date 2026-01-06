@@ -47,6 +47,7 @@ class LevelManager:
         self.checkpoint = None
         self.collisions = []
         self.one_way_platforms = []
+        self.control_mode = "hybrid"
 
         # ================= ENEMY =================
         self.enemy_manager = EnemyManager()
@@ -265,21 +266,26 @@ class LevelManager:
                 self.state = LevelState.PLAYING
 
     def _update_playing(self, dt, keys):
-        # ===== CODE PHASE CONTROLLER =====
+        # ===== 1. UPDATE CODE RUNNER =====
         if self.code_runner:
             self.code_runner.update()
 
-        # ===== PLAYER UPDATE (PHASE SWITCH) =====
-        if self.player.code_active:
-            # Phase 1: điều khiển bằng code → khóa bàn phím
+        # ===== 2. CONTROL MODE =====
+        mode = self.control_mode
+
+        if mode == "code":
+            # 🔒 Level chỉ cho code
+            self.player.code_active = True
             self.player.update(
                 dt,
                 None,
                 self.collisions,
                 self.one_way_platforms
             )
-        else:
-            # Phase 2: điều khiển bằng bàn phím
+
+        elif mode == "keyboard":
+            # 🎮 Level chỉ cho bàn phím
+            self.player.code_active = False
             self.player.update(
                 dt,
                 keys,
@@ -287,16 +293,34 @@ class LevelManager:
                 self.one_way_platforms
             )
 
-        # ===== ENEMY =====
+        else:  # hybrid
+            if self.player.code_active:
+                # IDE đang chạy code
+                self.player.update(
+                    dt,
+                    None,
+                    self.collisions,
+                    self.one_way_platforms
+                )
+            else:
+                # chơi tay bình thường
+                self.player.update(
+                    dt,
+                    keys,
+                    self.collisions,
+                    self.one_way_platforms
+                )
+
+        # ===== 3. ENEMY =====
         self.enemy_manager.update(self.player)
 
-        # ===== ITEMS / OBJECTIVE =====
+        # ===== 4. ITEM / OBJECTIVE =====
         self.item_manager.update(
             self.player,
             objective=self.objective
         )
 
-        # ===== CHECKPOINT =====
+        # ===== 5. CHECKPOINT =====
         if not self.checkpoint:
             return
 
@@ -318,6 +342,7 @@ class LevelManager:
                 self.state = LevelState.CHECKPOINT_ANIM
 
         self.checkpoint.player_inside = inside
+
 
 
     def _load_next_level(self):
@@ -356,6 +381,8 @@ class LevelManager:
             surf.blit(fade, (0, 0))
     def run_code(self, lines):
         if not self.player or not self.code_runner:
+            return
+        if self.control_mode == "keyboard":
             return
 
         self.code_runner.load(lines)

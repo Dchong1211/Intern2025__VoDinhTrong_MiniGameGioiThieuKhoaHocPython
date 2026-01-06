@@ -21,6 +21,8 @@ class CodePanel:
         self.target_x = self.hidden_x
         self.speed = 1600
         self.opened = False
+        self.disabled = False      # không cho tương tác
+        self.lock_close = False   # không cho đóng panel
 
 
         # ================= SURFACE =================
@@ -70,6 +72,8 @@ class CodePanel:
         self.snippet_rects = []
         self.example_rects = []
 
+        self.control_mode = "hybrid"
+
         # ================= BUTTON =================
         self.btn_size = 48
         self.btn_open_img = pygame.transform.scale(
@@ -101,7 +105,7 @@ class CodePanel:
         self.hint_title = hint_data.get("title", "")
         self.hints = hint_data.get("description", [])
         self.hint_examples = hint_data.get("examples", [])
-
+        self.control_mode = data.get("control_mode", "hybrid")
         self.editor.set_lines(data.get("solution", [""]))
         self.show_hint = False
 
@@ -116,10 +120,19 @@ class CodePanel:
         self.show_hint = False
 
     def toggle(self):
+        if self.disabled:
+            return
+
+        if self.lock_close and self.opened:
+            return
+
         self.open() if not self.opened else self.close()
+
 
     # ================= INPUT =================
     def handle_event(self, event):
+        if self.disabled:
+            return None
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.btn_rect.collidepoint(event.pos):
                 self.toggle()
@@ -210,7 +223,6 @@ class CodePanel:
             (220, 220, 230),
         )
 
-        # ===== EDITOR =====
         # ===== EDITOR =====
         FOOTER_H = 120   # trước 80 → tăng để chừa chỗ nút Run + Hint
         QUICK_H  = 140   # trước 90 → chừa đủ chỗ gợi ý code

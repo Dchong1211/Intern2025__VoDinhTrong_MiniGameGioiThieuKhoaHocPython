@@ -1,22 +1,21 @@
 {
-  "title": "Di chuyển và nhảy cơ bản",
+  "title": "Bước đi đầu tiên",
+  "control_mode": "code",
   "instruction": [
-    "Hãy điều khiển nhân vật đi sang phải để thu thập trái cây.",
-    "Sau đó sử dụng lệnh jump để nhảy lên platform phía trên."
+    "Level này CHỈ được điều khiển bằng code.",
+    "Hãy dùng move_right(n) để tới checkpoint."
   ],
   "solution": [
     ""
   ],
   "hint": {
-    "title": "Hàm move_right và jump",
+    "title": "Gợi ý",
     "description": [
-      "move_right(n): Di chuyển nhân vật sang phải n bước.",
-      "jump(): Giúp nhân vật nhảy lên platform cao hơn."
+      "move_right(n): di chuyển sang phải n bước."
     ],
     "examples": [
       "move_right(1)",
-      "move_right(3)",
-      "jump()"
+      "move_right(3)"
     ]
   }
 }

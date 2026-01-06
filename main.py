@@ -144,7 +144,7 @@ while running:
 
             # ESC: ƯU TIÊN ĐÓNG PANEL
             elif event.key == pygame.K_ESCAPE:
-                if code_panel.opened:
+                if code_panel.opened and not code_panel.lock_close:
                     code_panel.close()
                 elif mission_panel.opened:
                     mission_panel.close()
@@ -266,11 +266,27 @@ while running:
             )
             mission_panel.open()
 
-
-
             quest_path = f"data/quests/level{next_level}.json"
             code_panel.load_from_json(quest_path)
-            code_panel.close()
+
+            mode = level_manager.control_mode
+
+            if mode == "keyboard":
+                code_panel.disabled = True
+                code_panel.lock_close = False
+                code_panel.close()
+
+            elif mode == "code":
+                code_panel.disabled = False
+                code_panel.lock_close = True
+                code_panel.open()
+
+            else:  # hybrid
+                code_panel.disabled = False
+                code_panel.lock_close = False
+                code_panel.close()
+
+            level_manager.control_mode = code_panel.control_mode
 
             next_level = None
 
