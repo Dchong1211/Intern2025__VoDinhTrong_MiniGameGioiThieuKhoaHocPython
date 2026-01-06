@@ -1,4 +1,6 @@
 {
+  "id": 1,
+  "difficulty": 1,
   "title": "Bước đi đầu tiên",
   "control_mode": "code",
   "instruction": [

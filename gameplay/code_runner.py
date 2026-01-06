@@ -25,29 +25,36 @@ class CodeRunner:
         for line in lines:
             self._parse_line(line.strip())
 
-        # DEBUG (có thể xóa sau)
         print("[CodeRunner] QUEUE:", self.queue)
+
+    # ================= RESET (🔥 QUAN TRỌNG) =================
+    def reset(self):
+        print("🔥 CodeRunner RESET")
+
+        self.queue.clear()
+        self.running = False
+
+        if self.player:
+            self.player.code_active = False
+            self.player.current_command = None
+            self.player.command_queue.clear()
 
     # ================= PARSER =================
     def _parse_line(self, line):
         if not line or line.startswith("#"):
             return
 
-        # move_right(3)
         if line.startswith("move_right"):
             n = self._get_number(line, default=1)
             self.queue.append(MoveCommand("right", n))
 
-        # move_left(2)
         elif line.startswith("move_left"):
             n = self._get_number(line, default=1)
             self.queue.append(MoveCommand("left", n))
 
-        # jump()
         elif line.startswith("jump"):
             self.queue.append(JumpCommand())
 
-        # wait(1.5)
         elif line.startswith("wait"):
             t = self._get_number(line, default=1)
             self.queue.append(WaitCommand(t))
@@ -59,7 +66,7 @@ class CodeRunner:
         if "(" not in line or ")" not in line:
             return default
         try:
-            return int(float(line[line.find("(")+1 : line.find(")")]))
+            return int(float(line[line.find("(")+1 : line.find(")")] ))
         except:
             return default
 
@@ -68,15 +75,10 @@ class CodeRunner:
         if not self.running:
             return
 
-        # nếu player chưa có command đang chạy → cấp command mới
         if not self.player.current_command and self.queue:
             cmd = self.queue.pop(0)
             self.player.enqueue_command(cmd)
 
-        # CHỈ KẾT THÚC khi:
-        # - không còn command trong CodeRunner
-        # - không còn command trong Player
-        # - player đã xử lý xong command hiện tại
         if (
             not self.queue
             and not self.player.command_queue

@@ -61,6 +61,7 @@ char_select = CharacterSelect(
 state = GameState.MENU
 next_state = None
 next_level = None
+last_codepanel_level = level_manager.current_level
 
 # ================= UI =================
 menu = MainMenu()
@@ -144,7 +145,7 @@ while running:
 
             # ESC: ƯU TIÊN ĐÓNG PANEL
             elif event.key == pygame.K_ESCAPE:
-                if code_panel.opened and not code_panel.lock_close:
+                if code_panel.opened:
                     code_panel.close()
                 elif mission_panel.opened:
                     mission_panel.close()
@@ -228,7 +229,18 @@ while running:
     # ================= UPDATE =================
     if state == GameState.LEVEL_PLAY:
         keys = pygame.key.get_pressed()
-        
+        # ===== 🔥 AUTO RELOAD CODE PANEL KHI LEVEL ĐỔI =====
+        if level_manager.current_level != last_codepanel_level:
+            new_level = level_manager.current_level
+            quest_path = f"data/quests/level_{new_level}.json"
+
+            print("📄 AUTO LOAD QUEST:", quest_path)
+
+            code_panel.load_from_json(quest_path)
+            code_panel.close()
+
+            last_codepanel_level = new_level
+
         if code_panel.opened:
             keys = None
         level_manager.update(dt, keys)
@@ -266,27 +278,11 @@ while running:
             )
             mission_panel.open()
 
-            quest_path = f"data/quests/level{next_level}.json"
+
+
+            quest_path = f"data/quests/level_{next_level}.json"
             code_panel.load_from_json(quest_path)
-
-            mode = level_manager.control_mode
-
-            if mode == "keyboard":
-                code_panel.disabled = True
-                code_panel.lock_close = False
-                code_panel.close()
-
-            elif mode == "code":
-                code_panel.disabled = False
-                code_panel.lock_close = True
-                code_panel.open()
-
-            else:  # hybrid
-                code_panel.disabled = False
-                code_panel.lock_close = False
-                code_panel.close()
-
-            level_manager.control_mode = code_panel.control_mode
+            code_panel.close()
 
             next_level = None
 

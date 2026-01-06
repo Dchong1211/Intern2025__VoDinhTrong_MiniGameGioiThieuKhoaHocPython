@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="36" height="20" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="23">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="36" height="20" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="13">
  <tileset firstgid="1" source="tileset.tsx"/>
  <objectgroup id="5" name="Checkpoints">
   <object id="9" name="Checkpoint" x="496" y="240" width="64" height="64"/>
  </objectgroup>
  <objectgroup id="2" name="Player">
-  <object id="1" name="Player" x="272" y="272" width="32" height="32"/>
+  <object id="1" name="Player" x="32" y="272" width="32" height="32"/>
  </objectgroup>
  <objectgroup id="6" name="Items"/>
  <objectgroup id="4" name="Collisions">
@@ -13,15 +13,7 @@
   <object id="3" name="Collision" x="0" y="16" width="16" height="288"/>
   <object id="4" name="Collision" x="0" y="304" width="576" height="16"/>
   <object id="11" name="Collision" x="560" y="16" width="16" height="288"/>
-  <object id="12" name="Apple" type="Items" x="96" y="272" width="32" height="32"/>
-  <object id="13" name="Apple" type="Items" x="128" y="272" width="32" height="32"/>
-  <object id="14" name="Apple" type="Items" x="160" y="272" width="32" height="32"/>
-  <object id="15" name="Apple" type="Items" x="368" y="272" width="32" height="32"/>
-  <object id="16" name="Apple" type="Items" x="400" y="272" width="32" height="32"/>
-  <object id="17" name="Apple" type="Items" x="432" y="272" width="32" height="32"/>
-  <object id="18" name="Pineapple" type="Items" x="272" y="192" width="32" height="32"/>
-  <object id="21" name="Pineapple" type="Items" x="160" y="192" width="32" height="32"/>
-  <object id="22" name="Pineapple" type="Items" x="368" y="192" width="32" height="32"/>
+  <object id="12" name="Apple" type="Items" x="144" y="272" width="32" height="32"/>
  </objectgroup>
  <layer id="1" name="Ground" width="36" height="20">
   <data encoding="csv">

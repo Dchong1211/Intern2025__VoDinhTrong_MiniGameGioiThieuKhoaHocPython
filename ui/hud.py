@@ -8,6 +8,10 @@ class HUD:
 
     def __init__(self, item_manager):
         self.item_manager = item_manager
+        self.count_font = pygame.font.Font(
+            self.FONT_PATH,
+            16
+        )
 
         # ===== INVENTORY =====
         self.icons = self._load_icons()
@@ -116,8 +120,9 @@ class HUD:
     def _draw_inventory(self, surf, scale):
         sw, _ = surf.get_size()
 
-        size = int(56 * scale)
-        spacing = int(92 * scale)
+        icon_size = int(48 * scale)
+        spacing = int(90 * scale)
+        text_gap = int(1 * scale)
 
         x = sw - int(70 * scale)
         y = int(42 * scale)
@@ -126,11 +131,36 @@ class HUD:
             if not self.item_manager.discovered.get(name):
                 continue
 
-            icon_scaled = pygame.transform.scale(icon, (size, size))
-            rect = icon_scaled.get_rect(topright=(x, y))
-            surf.blit(icon_scaled, rect)
+            # ===== ICON =====
+            icon_scaled = pygame.transform.scale(icon, (icon_size, icon_size))
+            icon_rect = icon_scaled.get_rect(topright=(x, y))
+            surf.blit(icon_scaled, icon_rect)
 
+            # ===== COUNT TEXT =====
+            count = self.item_manager.count.get(name, 0)
+
+            text = self.count_font.render(str(count), True, (255, 255, 255))
+            text = pygame.transform.scale(
+                text,
+                (
+                    int(text.get_width() * scale),
+                    int(text.get_height() * scale),
+                )
+            )
+
+            # 🎯 đặt text NGANG HÀNG với icon
+            text_rect = text.get_rect(
+                midleft=(
+                    icon_rect.right + text_gap,
+                    icon_rect.centery
+                )
+            )
+
+            surf.blit(text, text_rect)
+
+            # sang item tiếp theo
             x -= spacing
+
 
     # ======================================================
     # DRAW SETTINGS (SLIDE)

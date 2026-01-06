@@ -1,0 +1,21 @@
+{
+  "id": 10,
+  "difficulty": 10,
+  "title": "Phản xạ nhanh",
+  "control_mode": "keyboard",
+  "instruction": [
+    "Chướng ngại xuất hiện liên tục.",
+    "Hãy giữ nhịp di chuyển ổn định."
+  ],
+  "keyboard_control": {
+    "left": "A",
+    "right": "D",
+    "jump": "SPACE"
+  },
+  "hint": {
+    "title": "Gợi ý",
+    "description": [
+      "Đừng spam nhảy."
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": 2,
+  "difficulty": 2,
+  "title": "Làm quen điều khiển",
+  "control_mode": "keyboard",
+  "instruction": [
+    "Level này KHÔNG cho phép dùng code.",
+    "Hãy dùng phím để di chuyển tới checkpoint."
+  ],
+  "keyboard_control": {
+    "left": "A",
+    "right": "D",
+    "jump": "SPACE"
+  },
+  "hint": {
+    "title": "Gợi ý",
+    "description": [
+      "Di chuyển chậm rãi để làm quen phím."
+    ]
+  }
+}

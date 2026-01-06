@@ -1,0 +1,21 @@
+{
+  "id": 6,
+  "difficulty": 6,
+  "title": "Chuỗi chướng ngại",
+  "control_mode": "keyboard",
+  "instruction": [
+    "Có nhiều chướng ngại liên tiếp.",
+    "Quan sát và phản xạ nhanh."
+  ],
+  "keyboard_control": {
+    "left": "A",
+    "right": "D",
+    "jump": "SPACE"
+  },
+  "hint": {
+    "title": "Gợi ý",
+    "description": [
+      "Không cần vội, hãy nhảy từng nhịp."
+    ]
+  }
+}

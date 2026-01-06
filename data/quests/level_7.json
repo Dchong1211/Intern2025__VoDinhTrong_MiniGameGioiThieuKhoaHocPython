@@ -1,0 +1,23 @@
+{
+  "id": 7,
+  "difficulty": 7,
+  "title": "Vòng lặp đầu tiên",
+  "control_mode": "code",
+  "instruction": [
+    "Checkpoint ở xa.",
+    "Hãy dùng vòng lặp để di chuyển."
+  ],
+  "solution": [
+    "for i in range(5):",
+    "  move_right(1)"
+  ],
+  "hint": {
+    "title": "Gợi ý",
+    "description": [
+      "Vòng lặp giúp tránh lặp code."
+    ],
+    "examples": [
+      "for i in range(3): move_right(1)"
+    ]
+  }
+}

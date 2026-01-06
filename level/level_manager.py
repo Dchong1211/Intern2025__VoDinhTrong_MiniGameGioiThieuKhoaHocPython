@@ -32,6 +32,13 @@ class LevelManager:
             1: "assets/levels/level1.tmx",
             2: "assets/levels/level2.tmx",
             3: "assets/levels/level3.tmx",
+            4: "assets/levels/level4.tmx",
+            5: "assets/levels/level5.tmx",
+            6: "assets/levels/level6.tmx",
+            7: "assets/levels/level7.tmx",
+            8: "assets/levels/level8.tmx",
+            9: "assets/levels/level9.tmx",
+            10: "assets/levels/level10.tmx",
         }
 
         self.current_level = 1
@@ -47,7 +54,6 @@ class LevelManager:
         self.checkpoint = None
         self.collisions = []
         self.one_way_platforms = []
-        self.control_mode = "hybrid"
 
         # ================= ENEMY =================
         self.enemy_manager = EnemyManager()
@@ -266,26 +272,21 @@ class LevelManager:
                 self.state = LevelState.PLAYING
 
     def _update_playing(self, dt, keys):
-        # ===== 1. UPDATE CODE RUNNER =====
+        # ===== CODE PHASE CONTROLLER =====
         if self.code_runner:
             self.code_runner.update()
 
-        # ===== 2. CONTROL MODE =====
-        mode = self.control_mode
-
-        if mode == "code":
-            # 🔒 Level chỉ cho code
-            self.player.code_active = True
+        # ===== PLAYER UPDATE (PHASE SWITCH) =====
+        if self.player.code_active:
+            # Phase 1: điều khiển bằng code → khóa bàn phím
             self.player.update(
                 dt,
                 None,
                 self.collisions,
                 self.one_way_platforms
             )
-
-        elif mode == "keyboard":
-            # 🎮 Level chỉ cho bàn phím
-            self.player.code_active = False
+        else:
+            # Phase 2: điều khiển bằng bàn phím
             self.player.update(
                 dt,
                 keys,
@@ -293,34 +294,16 @@ class LevelManager:
                 self.one_way_platforms
             )
 
-        else:  # hybrid
-            if self.player.code_active:
-                # IDE đang chạy code
-                self.player.update(
-                    dt,
-                    None,
-                    self.collisions,
-                    self.one_way_platforms
-                )
-            else:
-                # chơi tay bình thường
-                self.player.update(
-                    dt,
-                    keys,
-                    self.collisions,
-                    self.one_way_platforms
-                )
-
-        # ===== 3. ENEMY =====
+        # ===== ENEMY =====
         self.enemy_manager.update(self.player)
 
-        # ===== 4. ITEM / OBJECTIVE =====
+        # ===== ITEMS / OBJECTIVE =====
         self.item_manager.update(
             self.player,
             objective=self.objective
         )
 
-        # ===== 5. CHECKPOINT =====
+        # ===== CHECKPOINT =====
         if not self.checkpoint:
             return
 
@@ -342,7 +325,6 @@ class LevelManager:
                 self.state = LevelState.CHECKPOINT_ANIM
 
         self.checkpoint.player_inside = inside
-
 
 
     def _load_next_level(self):
@@ -381,8 +363,6 @@ class LevelManager:
             surf.blit(fade, (0, 0))
     def run_code(self, lines):
         if not self.player or not self.code_runner:
-            return
-        if self.control_mode == "keyboard":
             return
 
         self.code_runner.load(lines)

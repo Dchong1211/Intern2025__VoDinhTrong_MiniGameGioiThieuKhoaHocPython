@@ -17,30 +17,92 @@
             "scaleInEditor": 1
         },
         "level1.tmx": {
-            "scale": 4,
-            "selectedLayer": 2,
+            "expandedObjectLayers": [
+                2,
+                4,
+                5,
+                8
+            ],
+            "scale": 1.5,
+            "selectedLayer": 5,
             "viewCenter": {
-                "x": 228,
-                "y": 250.875
+                "x": 170.66666666666666,
+                "y": 92.99999999999997
+            }
+        },
+        "level10.tmx": {
+            "scale": 1.8884548611111112,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 288.06619168007353,
+                "y": 160.18386577798208
+            }
+        },
+        "level11.tmx": {
+            "scale": 1.8884548611111112,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 288.06619168007353,
+                "y": 160.18386577798208
             }
         },
         "level2.tmx": {
             "expandedObjectLayers": [
+                2,
+                4,
                 5
             ],
-            "scale": 1,
+            "scale": 1.5,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": -127.5,
-                "y": -7.5
+                "x": 219.33333333333331,
+                "y": 186.33333333333337
             }
         },
         "level3.tmx": {
-            "scale": 1,
+            "expandedObjectLayers": [
+                2,
+                4,
+                5
+            ],
+            "scale": 1.5,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 283.3333333333333,
+                "y": 214.66666666666666
+            }
+        },
+        "level4.tmx": {
+            "expandedObjectLayers": [
+                2,
+                4,
+                5,
+                8
+            ],
+            "scale": 2,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 361,
+                "y": 191.5
+            }
+        },
+        "level5.tmx": {
+            "expandedObjectLayers": [
+                8
+            ],
+            "scale": 1.8884548611111112,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 288.06619168007353,
+                "y": 167.86210066651344
+            }
+        },
+        "level9.tmx": {
+            "scale": 1.8884548611111112,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 282,
-                "y": -2.5
+                "x": 288.06619168007353,
+                "y": 160.18386577798208
             }
         },
         "tileset.tsx": {
