@@ -56,6 +56,7 @@ class Player:
         # ===== PHYSICS =====
         self.vel_x = 0
         self.vel_y = 0
+        self.block_keyboard = False   # 🔒 khóa WASD / SPACE / SHIFT
 
         self.speed = 3
         self.gravity = 0.35
@@ -118,6 +119,11 @@ class Player:
     # INPUT
     # ==================================================
     def _handle_input(self, keys):
+        # 🔒 KHÓA TƯƠNG TÁC BÀN PHÍM KHI Ở CHẾ ĐỘ CODE
+        if self.block_keyboard:
+            self.vel_x = 0
+            return
+
         if self.control_lock or self.dash_timer > 0:
             return
 
@@ -179,7 +185,6 @@ class Player:
     # UPDATE
     # ==================================================
     def update(self, dt, keys, tiles, one_way):
-        # Khoá physics khi teleport
         if self.state in (self.DISAPPEAR, self.APPEAR):
             self._update_animation()
             self._handle_respawn_flow()
@@ -190,8 +195,9 @@ class Player:
         else:
             if keys is not None:
                 self._handle_input(keys)
-
-
+            else:
+                # 🔒 FIX CỐT LÕI: dừng hẳn di chuyển ngang
+                self.vel_x = 0
 
         if self.invincible:
             self.invincible_timer -= 1

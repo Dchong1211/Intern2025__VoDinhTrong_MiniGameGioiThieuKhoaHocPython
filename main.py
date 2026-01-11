@@ -14,10 +14,14 @@ from ui.hud import HUD
 from ui.mission_panel import MissionPanel
 from ui.square_transition import SquareTransition
 from ui.code_panel import CodePanel
+
+from audio.sound_manager import SoundManager
+
+
+# ================= INIT =================
 pygame.init()
 pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
 
-from audio.sound_manager import SoundManager
 sound = SoundManager()
 
 # ================= WINDOW =================
@@ -25,9 +29,7 @@ BASE_W, BASE_H = 1280, 720
 screen = pygame.display.set_mode((BASE_W, BASE_H), pygame.RESIZABLE)
 pygame.display.set_caption("Code Fruit")
 
-icon = pygame.image.load(
-    "assets/Background/Menu/Logo.png"
-).convert_alpha()
+icon = pygame.image.load("assets/Background/Menu/Logo.png").convert_alpha()
 pygame.display.set_icon(icon)
 
 clock = pygame.time.Clock()
@@ -36,26 +38,23 @@ FPS = 60
 fullscreen = False
 windowed_size = (BASE_W, BASE_H)
 
+# ================= INPUT MODE =================
+INPUT_CONTROL = "control"
+INPUT_CODE = "code"
+input_mode = INPUT_CONTROL
+
 # ================= SAVE =================
 save = SaveManager()
 
 # ================= LEVEL MANAGER =================
 level_manager = LevelManager(save)
 
-# ===== LOAD FRUITS TỪ SAVE =====
 saved_fruits = save.get_fruits()
 level_manager.item_manager.import_data(saved_fruits)
 
 # ================= CHARACTER =================
-char_manager = CharacterManager(
-    save,
-    level_manager.item_manager
-)
-
-char_select = CharacterSelect(
-    char_manager,
-    level_manager.item_manager
-)
+char_manager = CharacterManager(save, level_manager.item_manager)
+char_select = CharacterSelect(char_manager, level_manager.item_manager)
 
 # ================= STATE =================
 state = GameState.MENU
@@ -69,25 +68,21 @@ level_select = LevelSelect(save)
 
 sound.play_music("assets/sounds/bgm.ogg")
 
-
 # ================= WORLD =================
 WORLD_W, WORLD_H = level_manager.map_w, level_manager.map_h
 world = pygame.Surface((WORLD_W, WORLD_H), pygame.SRCALPHA)
 
-# ===== HUD =====
+# ================= HUD & PANELS =================
 hud = HUD(level_manager.item_manager)
 
-# ===== MISSION PANEL (SLIDE X – LEFT → RIGHT) =====
 mission_panel = MissionPanel(
     screen.get_width(),
     level_manager.objective,
     hud.icons
 )
 
-# ===== CODE PANEL (SLIDE X – RIGHT → LEFT) =====
 code_panel = CodePanel(BASE_W, BASE_H)
 
-# ================= TRANSITION =================
 transition = SquareTransition(screen.get_size())
 
 
@@ -112,7 +107,7 @@ running = True
 while running:
     dt = clock.tick(FPS) / 1000
 
-    # ---------- EVENTS ----------
+    # ================= EVENTS =================
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -127,33 +122,29 @@ while running:
         # ===== KEY =====
         elif event.type == pygame.KEYDOWN:
 
-            # FULLSCREEN
             if event.key == pygame.K_F11:
                 fullscreen = not fullscreen
-
                 if fullscreen:
                     windowed_size = screen.get_size()
                     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
                 else:
-                    screen = pygame.display.set_mode(
-                        windowed_size, pygame.RESIZABLE
-                    )
+                    screen = pygame.display.set_mode(windowed_size, pygame.RESIZABLE)
 
                 transition.resize(screen.get_size())
                 level_select.on_resize(screen)
                 code_panel.on_resize(*screen.get_size())
 
-            # ESC: ƯU TIÊN ĐÓNG PANEL
             elif event.key == pygame.K_ESCAPE:
                 if code_panel.opened:
                     code_panel.close()
+                    input_mode = INPUT_CONTROL
                 elif mission_panel.opened:
                     mission_panel.close()
                 elif state == GameState.LEVEL_PLAY:
                     next_state = GameState.LEVEL_SELECT
                     transition.start_close()
 
-        # ===== UI EVENTS =====
+        # ===== STATE EVENTS =====
         if state == GameState.MENU:
             result = menu.handle_event(event, screen)
             if result == "PLAY" and not transition.is_active():
@@ -164,7 +155,6 @@ while running:
         elif state == GameState.CHARACTER_SELECT:
             char_select.handle_event(event)
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                sound.play_sfx("click")
                 next_state = GameState.LEVEL_SELECT
                 transition.start_close()
 
@@ -172,45 +162,39 @@ while running:
             result = level_select.handle_event(event, screen)
 
             if result == "BACK" and not transition.is_active():
-                sound.play_sfx("click")
                 next_state = GameState.MENU
                 transition.start_close()
 
             elif result == "CHARACTER" and not transition.is_active():
-                sound.play_sfx("click")
                 next_state = GameState.CHARACTER_SELECT
                 transition.start_close()
 
             elif isinstance(result, int) and not transition.is_active():
-                sound.play_sfx("click")
                 next_state = GameState.LEVEL_PLAY
                 next_level = result
                 transition.start_close()
 
         elif state == GameState.LEVEL_PLAY:
-            # ===== HUD EVENTS =====
             hud.update(dt)
             action = hud.handle_event(event)
 
-
-            # ===== PANEL EVENTS =====
             mission_panel.handle_event(event)
             result = code_panel.handle_event(event)
 
-            # 🔥 RUN CODE TỪ IDE
+            # ===== RUN CODE =====
             if isinstance(result, list):
-                print("🔥 RUN CODE:", result)
                 level_manager.run_code(result)
+                input_mode = INPUT_CONTROL
 
-            if action == "HOME" and not transition.is_active():
+            if action == "HOME":
                 next_state = GameState.MENU
                 transition.start_close()
 
-            elif action == "LEVEL" and not transition.is_active():
+            elif action == "LEVEL":
                 next_state = GameState.LEVEL_SELECT
                 transition.start_close()
 
-            elif action == "RESTART" and not transition.is_active():
+            elif action == "RESTART":
                 next_state = GameState.LEVEL_PLAY
                 next_level = level_manager.current_level
                 transition.start_close()
@@ -218,31 +202,24 @@ while running:
             elif action == "TOGGLE_SOUND":
                 if sound.enabled:
                     sound.mute()
-                    hud.sound_on = False   # 🔥 CẬP NHẬT HUD
+                    hud.sound_on = False
                 else:
                     sound.unmute()
-                    hud.sound_on = True    # 🔥 CẬP NHẬT HUD
-
-
-
+                    hud.sound_on = True
 
     # ================= UPDATE =================
     if state == GameState.LEVEL_PLAY:
-        keys = pygame.key.get_pressed()
-        # ===== 🔥 AUTO RELOAD CODE PANEL KHI LEVEL ĐỔI =====
+
         if level_manager.current_level != last_codepanel_level:
-            new_level = level_manager.current_level
-            quest_path = f"data/quests/level_{new_level}.json"
-
-            print("📄 AUTO LOAD QUEST:", quest_path)
-
+            quest_path = f"data/quests/level_{level_manager.current_level}.json"
             code_panel.load_from_json(quest_path)
             code_panel.close()
+            last_codepanel_level = level_manager.current_level
 
-            last_codepanel_level = new_level
+        keys = None
+        if input_mode == INPUT_CONTROL:
+            keys = pygame.key.get_pressed()
 
-        if code_panel.opened:
-            keys = None
         level_manager.update(dt, keys)
 
         mission_panel.update(dt)
@@ -278,8 +255,6 @@ while running:
             )
             mission_panel.open()
 
-
-
             quest_path = f"data/quests/level_{next_level}.json"
             code_panel.load_from_json(quest_path)
             code_panel.close()
@@ -304,14 +279,11 @@ while running:
     elif state == GameState.LEVEL_PLAY:
         world.fill((20, 20, 25))
         level_manager.draw(world)
-
         draw_scaled_world()
 
         hud.draw(screen, dt)
         mission_panel.draw(screen)
         code_panel.draw(screen)
-
-        # 🔥 POPUP PHẢI VẼ SAU CÙNG
         code_panel.draw_hint_popup(screen)
 
     transition.draw(screen)

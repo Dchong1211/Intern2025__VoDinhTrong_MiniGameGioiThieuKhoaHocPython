@@ -270,29 +270,20 @@ class LevelManager:
             )
             if self.fade_alpha <= 0:
                 self.state = LevelState.PLAYING
-
     def _update_playing(self, dt, keys):
-        # ===== CODE PHASE CONTROLLER =====
+        # ===== CODE RUNNER =====
         if self.code_runner:
             self.code_runner.update()
 
-        # ===== PLAYER UPDATE (PHASE SWITCH) =====
-        if self.player.code_active:
-            # Phase 1: điều khiển bằng code → khóa bàn phím
-            self.player.update(
-                dt,
-                None,
-                self.collisions,
-                self.one_way_platforms
-            )
-        else:
-            # Phase 2: điều khiển bằng bàn phím
-            self.player.update(
-                dt,
-                keys,
-                self.collisions,
-                self.one_way_platforms
-            )
+        # 🔒 KHÓA INPUT KHI CODE PANEL ĐANG MỞ HOẶC CODE ĐANG CHẠY
+        keyboard_locked = self.player.code_active or keys is None
+
+        self.player.update(
+            dt,
+            None if keyboard_locked else keys,
+            self.collisions,
+            self.one_way_platforms
+        )
 
         # ===== ENEMY =====
         self.enemy_manager.update(self.player)
@@ -303,7 +294,7 @@ class LevelManager:
             objective=self.objective
         )
 
-        # ===== CHECKPOINT =====
+        # ===== CHECKPOINT (giữ nguyên như cũ) =====
         if not self.checkpoint:
             return
 

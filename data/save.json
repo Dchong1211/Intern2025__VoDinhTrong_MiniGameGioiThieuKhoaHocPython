@@ -26,13 +26,13 @@
             1,
             2,
             3,
-            4
+            4,
+            5
         ]
     },
     "characters": {
         "owned": [
-            "Virtual Guy",
-            "Mask Dude"
+            "Virtual Guy"
         ],
         "selected": "Virtual Guy"
     }
