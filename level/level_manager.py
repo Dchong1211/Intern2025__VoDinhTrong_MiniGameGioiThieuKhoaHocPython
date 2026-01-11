@@ -27,20 +27,22 @@ class LevelManager:
         # ================= QUEST UI =================
         self.quest_panel = None
 
-        # ================= LEVEL LIST =================
-        self.levels = {
-            1: "assets/levels/level1.tmx",
-            2: "assets/levels/level2.tmx",
-            3: "assets/levels/level3.tmx",
-            4: "assets/levels/level4.tmx",
-            5: "assets/levels/level5.tmx",
-            6: "assets/levels/level6.tmx",
-            7: "assets/levels/level7.tmx",
-            8: "assets/levels/level8.tmx",
-            9: "assets/levels/level9.tmx",
-            10: "assets/levels/level10.tmx",
-        }
-
+        # ================= LEVEL LIST (AUTO LOAD) =================
+        self.levels = {}
+        self.level_dir = "assets/levels" 
+        
+        # Quét level tự động từ 1 -> N
+        lvl_id = 1
+        while True:
+            filename = f"level{lvl_id}.tmx"
+            path = os.path.join(self.level_dir, filename)
+            if os.path.exists(path):
+                self.levels[lvl_id] = path
+                print(f"[LevelManager] Loaded path for: {filename}")
+                lvl_id += 1
+            else:
+                break
+        
         self.current_level = 1
 
         # ================= MAP =================
@@ -51,6 +53,7 @@ class LevelManager:
 
         # ================= OBJECTS =================
         self.player = None
+        self.code_runner = None
         self.checkpoint = None
         self.collisions = []
         self.one_way_platforms = []
@@ -58,21 +61,23 @@ class LevelManager:
         # ================= ENEMY =================
         self.enemy_manager = EnemyManager()
 
-        # ================= INVENTORY (GLOBAL) =================
+        # ================= INVENTORY =================
         self.item_manager = ItemManager()
         if not getattr(save, "_fruit_loaded", False):
             self.item_manager.import_data(save.get_fruits())
             save._fruit_loaded = True
 
-        # ================= OBJECTIVE (PER LEVEL) =================
+        # ================= OBJECTIVE =================
         self.objective = LevelObjective()
 
         # ================= BACKGROUND =================
         self.bg_folder = "assets/Background/Level"
-        self.bg_files = [
-            f for f in os.listdir(self.bg_folder)
-            if f.endswith(".png")
-        ]
+        self.bg_files = []
+        if os.path.exists(self.bg_folder):
+            self.bg_files = [
+                f for f in os.listdir(self.bg_folder)
+                if f.endswith(".png")
+            ]
         self.bg = None
 
         # ================= STATE =================
@@ -80,7 +85,9 @@ class LevelManager:
         self.fade_alpha = 0
         self.fade_speed = 300
 
-        self.load_level(self.current_level)
+        # Khởi tạo level đầu tiên
+        if self.levels:
+            self.load_level(self.current_level)
 
     # ==================================================
     # ================= PUBLIC API =====================
@@ -100,7 +107,6 @@ class LevelManager:
 
     def on_quest_success(self):
         self.save.save_fruits(self.item_manager.export_data())
-
         if self.checkpoint:
             self.checkpoint.activate()
             self.state = LevelState.CHECKPOINT_ANIM
@@ -110,12 +116,22 @@ class LevelManager:
             return
         self.item_manager.punish_random_type(0.1)
         self.save.save_fruits(self.item_manager.export_data())
+    
+    def run_code(self, lines):
+        if not self.player or not self.code_runner:
+            return
+        self.code_runner.load(lines)
 
     # ==================================================
     # ================= LOAD LEVEL =====================
     # ==================================================
 
     def load_level(self, level_id):
+        if level_id not in self.levels:
+            print(f"[ERROR] Level {level_id} not found!")
+            return
+
+        print(f"--- LOADING LEVEL {level_id} ---")
         self.current_level = level_id
         self.state = LevelState.PLAYING
         self.fade_alpha = 0
@@ -123,11 +139,13 @@ class LevelManager:
         self.request_go_home = False
         self.request_go_level_select = False
 
+        # Reset dữ liệu cũ
         self.collisions.clear()
         self.one_way_platforms.clear()
-        self.item_manager.clear_level_items()
+        self.item_manager.clear_level_items() # Xóa item của màn trước
         self.enemy_manager.enemies.clear()
 
+        # Load file TMX
         self.tmx = load_pygame(self.levels[level_id])
 
         self.tw = self.tmx.tilewidth
@@ -137,16 +155,16 @@ class LevelManager:
 
         self._load_background(level_id)
         self._build_map_surface()
+        
+        # Load Objects (QUAN TRỌNG)
         self._load_objects()
 
-        # fallback nếu map không có Player object
         if not self.player:
             self.player = Player(
                 32, 32,
                 self.save.get_selected_character()
             )
 
-        # ===== SAU KHI PLAYER ĐÃ CHẮC CHẮN TỒN TẠI =====
         self.code_runner = CodeRunner(self.player)
 
         if self.checkpoint and self.is_level_completed(level_id):
@@ -189,7 +207,14 @@ class LevelManager:
                         )
 
     def _load_objects(self):
+        # Biến đếm số lượng trái cây có trong map
         fruit_max = {}
+        
+        # Danh sách tên các loại quả (Phải khớp chính xác với Tiled)
+        valid_fruits = [
+            "Apple", "Bananas", "Cherries", "Kiwi", 
+            "Melon", "Orange", "Pineapple", "Strawberry"
+        ]
 
         self.player = None
         self.checkpoint = None
@@ -198,10 +223,7 @@ class LevelManager:
 
         for obj in self.tmx.objects:
             if obj.name == "Player":
-                self.player = Player(
-                    obj.x, obj.y,
-                    character
-                )
+                self.player = Player(obj.x, obj.y, character)
 
             elif obj.name == "Checkpoint":
                 self.checkpoint = Checkpoint(obj.x, obj.y)
@@ -218,17 +240,28 @@ class LevelManager:
 
             elif obj.type == "Enemy":
                 self.enemy_manager.add(
-                    obj.x,
-                    obj.y,
-                    obj.name,
-                    obj.properties,   # offNeg / offPos lấy từ Tiled
-                    tile_size         # TRUYỀN TILE SIZE THẬT
+                    obj.x, obj.y, obj.name,
+                    obj.properties, tile_size
                 )
 
-            elif obj.type == "Items":
+            # === FIX LOGIC ITEMS (QUAN TRỌNG) ===
+            # Ưu tiên kiểm tra theo TÊN (Name) trước, vì Type có thể bị cache lỗi
+            elif obj.name in valid_fruits:
                 self.item_manager.add(obj.x, obj.y, obj.name)
+                # Cộng dồn số lượng
                 fruit_max[obj.name] = fruit_max.get(obj.name, 0) + 1
+                print(f"[DEBUG] Found Fruit by Name: {obj.name}")
 
+            # Dự phòng: Kiểm tra theo TYPE (nếu lỡ đặt sai tên nhưng đúng Type)
+            elif getattr(obj, "type", "") == "Items":
+                self.item_manager.add(obj.x, obj.y, obj.name)
+                # Chỉ tính vào nhiệm vụ nếu tên hợp lệ
+                if obj.name in valid_fruits:
+                    fruit_max[obj.name] = fruit_max.get(obj.name, 0) + 1
+                    print(f"[DEBUG] Found Fruit by Type: {obj.name}")
+
+        # Gửi dữ liệu đếm được vào Objective để tạo nhiệm vụ
+        print(f"[DEBUG] Level Objective Generated: {fruit_max}")
         self.objective.generate(fruit_max)
 
     # ==================================================
@@ -271,52 +304,56 @@ class LevelManager:
             if self.fade_alpha <= 0:
                 self.state = LevelState.PLAYING
     def _update_playing(self, dt, keys):
-        # ===== CODE RUNNER =====
-        if self.code_runner:
-            self.code_runner.update()
+            if self.code_runner:
+                self.code_runner.update()
 
-        # 🔒 KHÓA INPUT KHI CODE PANEL ĐANG MỞ HOẶC CODE ĐANG CHẠY
-        keyboard_locked = self.player.code_active or keys is None
+            keyboard_locked = (keys is None) or (self.player and self.player.code_active)
 
-        self.player.update(
-            dt,
-            None if keyboard_locked else keys,
-            self.collisions,
-            self.one_way_platforms
-        )
+            if self.player:
+                self.player.update(
+                    dt,
+                    None if keyboard_locked else keys,
+                    self.collisions,
+                    self.one_way_platforms
+                )
 
-        # ===== ENEMY =====
-        self.enemy_manager.update(self.player)
+            self.enemy_manager.update(self.player)
+            self.item_manager.update(self.player, objective=self.objective)
 
-        # ===== ITEMS / OBJECTIVE =====
-        self.item_manager.update(
-            self.player,
-            objective=self.objective
-        )
+            if not self.checkpoint:
+                return
 
-        # ===== CHECKPOINT (giữ nguyên như cũ) =====
-        if not self.checkpoint:
-            return
+            # Cập nhật trạng thái Ready cho checkpoint nếu đã gom đủ quả
+            # (Dòng này giúp checkpoint biết là nó đã sẵn sàng bay cờ)
+            is_completed = self.objective.is_completed()
+            self.checkpoint.ready = (True if self.checkpoint.active else is_completed)
 
-        self.checkpoint.ready = (
-            True if self.checkpoint.active
-            else self.objective.is_completed()
-        )
+            # Kiểm tra va chạm giữa Player và Checkpoint
+            inside = self.player.rect.colliderect(self.checkpoint.rect)
 
-        inside = self.player.rect.colliderect(self.checkpoint.rect)
+            if inside and not self.checkpoint.player_inside:
+                
+                # === PHẦN SỬA LOGIC QUAN TRỌNG TẠI ĐÂY ===
+                
+                # TRƯỜNG HỢP 1: Đã gom đủ trái cây -> CHIẾN THẮNG
+                if is_completed:
+                    print("[INFO] Level Complete! Activating Checkpoint...")
+                    self.checkpoint.activate()      # Kích hoạt animation cờ bay
+                    self.state = LevelState.CHECKPOINT_ANIM # Chuyển state để chặn điều khiển và chờ animation
+                    
+                    # Tự động đóng bảng nhiệm vụ nếu đang mở cho đỡ vướng
+                    if self.quest_panel: 
+                        self.quest_panel.close()
 
-        if inside and not self.checkpoint.player_inside:
-            if not self.checkpoint.active:
-                if self.is_level_completed(self.current_level):
-                    self.checkpoint.activate()
-                    self.state = LevelState.CHECKPOINT_ANIM
-                elif self.quest_panel:
-                    self.checkpoint.on_player_touch(self.quest_panel)
-            else:
-                self.state = LevelState.CHECKPOINT_ANIM
+                # TRƯỜNG HỢP 2: Chưa đủ trái cây -> Hiện bảng nhắc nhở
+                elif not self.checkpoint.active:
+                    print("[INFO] Quest incomplete. Showing Mission Panel.")
+                    if self.quest_panel:
+                        self.checkpoint.on_player_touch(self.quest_panel)
+                
+                # ==========================================
 
-        self.checkpoint.player_inside = inside
-
+            self.checkpoint.player_inside = inside
 
     def _load_next_level(self):
         next_level = self.current_level + 1
@@ -325,7 +362,9 @@ class LevelManager:
             self.load_level(next_level)
             self.state = LevelState.FADING_IN
         else:
+            print("All levels completed!")
             self.state = LevelState.PLAYING
+            self.go_level_select()
 
     # ==================================================
     # ================= DRAW ===========================
@@ -335,25 +374,33 @@ class LevelManager:
         if self.bg:
             self.bg.draw(surf)
 
-        surf.blit(self.map_surface, (0, 0))
+        if self.map_surface:
+            surf.blit(self.map_surface, (0, 0))
 
-        # ===== ENEMY =====
         self.enemy_manager.draw(surf)
-
         self.item_manager.draw(surf)
 
         if self.checkpoint:
             self.checkpoint.draw(surf)
 
-        self.player.draw(surf)
+        if self.player:
+            self.player.draw(surf)
 
         if self.fade_alpha > 0:
             fade = pygame.Surface((self.map_w, self.map_h))
             fade.fill((0, 0, 0))
             fade.set_alpha(int(self.fade_alpha))
             surf.blit(fade, (0, 0))
-    def run_code(self, lines):
-        if not self.player or not self.code_runner:
-            return
 
-        self.code_runner.load(lines)
+    def get_camera_offset(self, screen_w, screen_h):
+        if not self.player:
+            return 0, 0
+
+        target_x = self.player.rect.centerx
+        target_y = self.player.rect.centery
+        cam_x = screen_w // 2 - target_x
+        cam_y = screen_h // 2 - target_y
+        cam_x = min(0, max(cam_x, -(self.map_w - screen_w)))
+        cam_y = min(0, max(cam_y, -(self.map_h - screen_h)))
+
+        return cam_x, cam_y

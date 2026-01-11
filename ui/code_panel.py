@@ -1,408 +1,328 @@
 import pygame
 import json
-
 from ui.ui_text import UITextLayout
 from ui.code_editor import CodeEditor
 
+# === COLOR PALETTE ===
+COLOR_BG = (25, 27, 35)
+COLOR_HEADER_BG = (40, 42, 55)
+COLOR_BTN_DEFAULT = (60, 65, 80)
+COLOR_BTN_HOVER = (80, 85, 100)
+COLOR_TEXT_MAIN = (230, 230, 240)
+COLOR_ACCENT = (80, 200, 255)
+
+class CommandBtn:
+    def __init__(self, text, code_snippet, color):
+        self.text = text
+        self.code = code_snippet
+        self.base_color = color
+        self.rect = pygame.Rect(0, 0, 0, 0)
+        self.font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 12)
+
+    def update_rect(self, x, y, w, h):
+        self.rect = pygame.Rect(x, y, w, h)
+
+    def draw(self, surface):
+        # Draw Button
+        pygame.draw.rect(surface, self.base_color, self.rect, border_radius=8)
+        pygame.draw.rect(surface, (255, 255, 255), self.rect, 2, border_radius=8)
+        
+        # Center Text
+        txt_surf = self.font.render(self.text, True, (255, 255, 255))
+        tx = self.rect.x + (self.rect.width - txt_surf.get_width()) // 2
+        ty = self.rect.y + (self.rect.height - txt_surf.get_height()) // 2
+        surface.blit(txt_surf, (tx, ty))
 
 class CodePanel:
-    def __init__(self, screen_w, screen_h):
-        # ================= SIZE =================
-        self.base_width = 360
-        self.base_height = 720
+    def __init__(self, x_pos, width, height):
+        self.width = width
+        # Height and X will be set in on_resize
+        self.height = height 
+        self.x = x_pos 
 
-        self.scale = screen_h / self.base_height
-        self.width = int(self.base_width * self.scale)
-        self.height = screen_h
+        self.surface = pygame.Surface((self.width, self.height))
 
-        self.hidden_x = screen_w
-        self.visible_x = screen_w - self.width
-        self.x = self.hidden_x
-        self.target_x = self.hidden_x
-        self.speed = 1600
-        self.opened = False
+        # --- FONTS ---
+        try:
+            self.code_font = pygame.font.Font("assets/Font/Consolas.ttf", 16)
+        except:
+            self.code_font = pygame.font.SysFont("consolas", 16)
 
+        self.ui_font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 16)
+        self.small_font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 12)
 
-        # ================= SURFACE =================
-        self.surface = pygame.Surface(
-            (self.base_width, self.base_height), pygame.SRCALPHA
-        )
-
-        # ================= FONT =================
-        self.font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 15)
-        self.title_font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 17)
-        self.code_font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 15)
-
-        self.line_h = self.code_font.get_height() + 3
-
-        # Font nhỏ riêng cho nút Hướng dẫn
-        self.hint_font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 12)
-
-        self.hint_text = self.hint_font.render("Hướng dẫn", True, (255, 255, 255))
-
-        # Padding nhỏ lại để không vượt panel
-        self.hint_padding_x = 5
-        self.hint_padding_y = 3
-
-
-        self.hint_btn_rect = self.hint_text.get_rect()
-        self.hint_btn_rect.width  += self.hint_padding_x * 2
-        self.hint_btn_rect.height += self.hint_padding_y * 2
-        # ================= HELPERS =================
-        self.text_layout = UITextLayout(self.font, line_height=18)
+        self.line_h = self.code_font.get_height() + 6
+        
+        # --- COMPONENTS ---
         self.editor = CodeEditor(self.code_font, self.line_h)
+        self.text_layout = UITextLayout(self.ui_font, line_height=24)
 
-        # ================= DATA =================
-        self.title = ""
+        # --- DATA ---
+        self.title = "MISSION CONTROL"
         self.instructions = []
-
-        # ===== HINT DATA =====
         self.hint_title = ""
         self.hints = []
-        self.hint_examples = []
-
-        # ================= STATE =================
         self.show_hint = False
+
+        # --- COMMAND BUTTONS ---
+        self.commands = [
+            CommandBtn("MOVE RIGHT", "move_right(1)", (50, 120, 180)),
+            CommandBtn("MOVE LEFT", "move_left(1)", (50, 120, 180)),
+            CommandBtn("JUMP UP", "jump()", (180, 80, 80)),
+            CommandBtn("LOOP 3x", "for i in range(3):", (200, 140, 40)),
+            CommandBtn("INDENT (TAB)", "    ", (100, 100, 110)),
+        ]
+
+        # --- RECTS ---
+        self.run_btn_rect = pygame.Rect(0, 0, 160, 50)
+        self.hint_btn_rect = pygame.Rect(0, 0, 40, 40)
+        self.editor_rect_cache = pygame.Rect(0,0,0,0)
+        
+        # --- ASSETS ---
+        self.icon_run = self._make_run_button_img((160, 50))
+        self.lbl_hint = self.ui_font.render("?", True, COLOR_ACCENT)
+
+        # --- STATE ---
         self.cursor_timer = 0
         self.cursor_visible = True
 
-        # ================= UI RECTS =================
-        self.snippet_rects = []
-        self.example_rects = []
+        # Initial Layout Calculation
+        self.on_resize(x_pos + width, height)
 
-        # ================= BUTTON =================
-        self.btn_size = 48
-        self.btn_open_img = pygame.transform.scale(
-            pygame.image.load("assets/Menu/Buttons/Show.png").convert_alpha(),
-            (48, 48),
-        )
-        self.btn_close_img = pygame.transform.scale(
-            pygame.image.load("assets/Menu/Buttons/Hide.png").convert_alpha(),
-            (48, 48),
-        )
-        self.btn_rect = pygame.Rect(0, 0, 48, 48)
+    def _make_run_button_img(self, size):
+        s = pygame.Surface(size, pygame.SRCALPHA)
+        pygame.draw.rect(s, (40, 200, 100), (0,0,size[0], size[1]), border_radius=10)
+        pygame.draw.rect(s, (255,255,255), (0,0,size[0], size[1]), 3, border_radius=10)
+        font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 20)
+        txt = font.render("RUN CODE", True, (255,255,255))
+        s.blit(txt, ((size[0]-txt.get_width())//2, (size[1]-txt.get_height())//2))
+        return s
 
-        self.run_img = pygame.transform.scale(
-            pygame.image.load("assets/Menu/Buttons/Run.png").convert_alpha(),
-            (140, 48),
-        )
-        self.run_rect = pygame.Rect(0, 0, 140, 48)
-        self.title_text = UITextLayout(self.title_font, line_height=self.title_font.get_height() + 4)
-        self.body_text  = UITextLayout(self.font, line_height=18)
-    # ================= LOAD JSON =================
     def load_from_json(self, path):
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            self.title = data.get("title", "Mission")
+            self.instructions = data.get("instruction", [])
+            
+            hint_data = data.get("hint", {})
+            self.hint_title = hint_data.get("title", "Gợi ý")
+            self.hints = hint_data.get("description", [])
+            
+            self.editor.set_lines(data.get("solution", [""]))
+        except Exception as e:
+            print(f"Error loading level JSON: {e}")
 
-        self.title = data.get("title", "")
-        self.instructions = data.get("instruction", [])
+    def on_resize(self, screen_w, screen_h):
+        self.height = screen_h
+        self.x = screen_w - self.width
+        self.surface = pygame.Surface((self.width, self.height))
 
-        hint_data = data.get("hint", {})
-        self.hint_title = hint_data.get("title", "")
-        self.hints = hint_data.get("description", [])
-        self.hint_examples = hint_data.get("examples", [])
+        # --- RE-CALCULATE LAYOUT ---
+        padding = 20
+        
+        # 1. HINT BUTTON
+        self.hint_btn_rect.topright = (self.width - padding, padding)
 
-        self.editor.set_lines(data.get("solution", [""]))
-        self.show_hint = False
+        # 2. COMMAND BUTTONS
+        btn_h = 40
+        cols = 2
+        col_w = (self.width - padding*3) // cols
+        start_y = 100
+        
+        for i, cmd in enumerate(self.commands):
+            row = i // cols
+            col = i % cols
+            bx = padding + col * (col_w + padding)
+            by = start_y + row * (btn_h + 15)
+            cmd.update_rect(bx, by, col_w, btn_h)
+            
+        # Calculate bottom of buttons for Editor start
+        rows = (len(self.commands) + cols - 1) // cols
+        current_btn_bottom = start_y + rows * (btn_h + 15)
 
-    # ================= TOGGLE =================
-    def open(self):
-        self.opened = True
-        self.target_x = self.visible_x
+        # 3. RUN BUTTON (Bottom Center)
+        self.run_btn_rect.midbottom = (self.width // 2, self.height - 25)
 
-    def close(self):
-        self.opened = False
-        self.target_x = self.hidden_x
-        self.show_hint = False
+        # 4. EDITOR
+        y_editor = current_btn_bottom + 30 + 20 # +30 gap + 20 for "YOUR SOLUTION" text
+        footer_h = 90
+        editor_h = self.height - y_editor - footer_h
+        self.editor_rect_cache = pygame.Rect(padding, y_editor, self.width - padding*2, editor_h)
 
-    def toggle(self):
-        self.open() if not self.opened else self.close()
-
-    # ================= INPUT =================
-    def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if self.btn_rect.collidepoint(event.pos):
-                self.toggle()
-                return None
-
-            if not self.opened:
-                return None
-
-            mx, my = event.pos
-            local_x = int((mx - self.x) / self.scale)
-            local_y = int(my / self.scale)
-
-            # QUICK INSERT
-            for rect, code in self.example_rects:
-                if rect.collidepoint((local_x, local_y)):
-                    self.editor.insert_line(code)
-                    return None
-
-
-            # RUN
-            if self.run_rect.collidepoint((local_x, local_y)):
-                code = [l for l in self.editor.lines if l.strip()]
-
-                # 👉 ẨN PANEL SAU KHI RUN
-                self.close()
-
-                return code
-
-
-            # HINT
-            if self.hint_btn_rect.collidepoint((local_x, local_y)):
-                self.show_hint = not self.show_hint
-                return None
-
-        if event.type == pygame.KEYDOWN and self.opened:
-            self.editor.handle_key(event)
-
-        return None
-
-    # ================= UPDATE =================
     def update(self, dt):
-        self.hint_btn_rect.midright = (
-            self.run_rect.left - 10,
-            self.run_rect.centery
-        )
-
-        if self.x < self.target_x:
-            self.x = min(self.target_x, self.x + self.speed * dt)
-        elif self.x > self.target_x:
-            self.x = max(self.target_x, self.x - self.speed * dt)
-
-        self.btn_rect.x = int(self.x - self.btn_size)
-        self.btn_rect.y = self.height // 2 - self.btn_size // 2
-
         self.cursor_timer += dt
         if self.cursor_timer >= 0.5:
             self.cursor_visible = not self.cursor_visible
             self.cursor_timer = 0
 
-        self.run_rect.centerx = self.base_width // 2
-        self.run_rect.bottom = self.base_height - 16
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = event.pos
+            if mx < self.x:
+                return None
+                
+            local_x = mx - self.x
+            local_y = my
+            
+            # Check RUN
+            if self.run_btn_rect.collidepoint(local_x, local_y):
+                return [l for l in self.editor.lines if l.strip()]
 
-        self.hint_btn_rect.midright = (
-            self.run_rect.left - 10,
-            self.run_rect.centery
-        )
+            # Check HINT
+            if self.hint_btn_rect.collidepoint(local_x, local_y):
+                self.show_hint = not self.show_hint
+                return None
 
-    # ================= DRAW =================
+            # Check Commands
+            for cmd in self.commands:
+                if cmd.rect.collidepoint(local_x, local_y):
+                    self._insert_code(cmd.code)
+                    return None
+            
+            # Check Editor
+            if self.editor_rect_cache.collidepoint(local_x, local_y):
+                self._handle_editor_click(local_x, local_y)
+
+        elif event.type == pygame.MOUSEWHEEL:
+            mx, my = pygame.mouse.get_pos()
+            if mx > self.x: 
+                self.editor.scroll -= event.y
+                
+        elif event.type == pygame.KEYDOWN:
+            self.editor.handle_key(event)
+            self.cursor_visible = True
+
+        return None
+
+    def _insert_code(self, text):
+        current_line = self.editor.lines[self.editor.cursor_line]
+        if current_line.strip() == "":
+            self.editor.lines[self.editor.cursor_line] = text
+        else:
+            self.editor.lines.insert(self.editor.cursor_line + 1, text)
+            self.editor.cursor_line += 1
+        self.editor.cursor_col = len(self.editor.lines[self.editor.cursor_line])
+
+    def _handle_editor_click(self, lx, ly):
+        rel_y = ly - self.editor_rect_cache.y
+        row = int(rel_y // self.line_h) + self.editor.scroll
+        if 0 <= row < len(self.editor.lines):
+            self.editor.cursor_line = row
+            self.editor.cursor_col = len(self.editor.lines[row])
+
     def draw(self, screen):
-        self.surface.fill((25, 25, 35))
+        # Background
+        self.surface.fill(COLOR_BG)
+        pygame.draw.line(self.surface, (100, 100, 100), (0,0), (0, self.height), 2)
+        
+        padding = 20
+        
+        # Header
+        title_surf = self.ui_font.render(self.title, True, COLOR_ACCENT)
+        self.surface.blit(title_surf, (padding, padding))
+        
+        # Hint Button
+        pygame.draw.rect(self.surface, (60, 60, 70), self.hint_btn_rect, border_radius=20)
+        pygame.draw.rect(self.surface, COLOR_ACCENT, self.hint_btn_rect, 2, border_radius=20)
+        lbl_rect = self.lbl_hint.get_rect(center=self.hint_btn_rect.center)
+        self.surface.blit(self.lbl_hint, lbl_rect)
+        
+        # Instructions Label
+        instr = self.small_font.render("Click buttons to code:", True, (180, 180, 180))
+        self.surface.blit(instr, (padding, 60))
+        
+        # Draw Buttons
+        for cmd in self.commands:
+            cmd.draw(self.surface)
 
-        x = 20
-        y = 20
-        max_w = self.base_width - 40
+        # Editor Label
+        lbl_code_y = self.editor_rect_cache.y - 25
+        lbl_code = self.small_font.render("YOUR SOLUTION:", True, (255, 255, 255))
+        self.surface.blit(lbl_code, (padding, lbl_code_y))
 
-        # ===== TITLE =====
-        for line in self.title_text.wrap_words(
-            self.title.upper(), max_w
-        ):
-            self.surface.blit(
-                self.title_font.render(line, True, (255, 220, 120)),
-                (x, y)
-            )
-            y += self.title_text.line_height
-        y += 6
+        # Editor Frame
+        pygame.draw.rect(self.surface, (20, 22, 28), self.editor_rect_cache)
+        pygame.draw.rect(self.surface, (60, 65, 80), self.editor_rect_cache, 2)
+        
+        self._draw_editor_text(self.editor_rect_cache)
 
+        # Run Button
+        self.surface.blit(self.icon_run, self.run_btn_rect)
 
-        # ===== INSTRUCTION =====
-        y = self.text_layout.draw_paragraphs(
-            self.surface,
-            ["- " + i for i in self.instructions],
-            x + 6,
-            y,
-            max_w - 20,
-            (220, 220, 230),
-        )
+        # Final Blit
+        screen.blit(self.surface, (self.x, 0))
 
-        # ===== EDITOR =====
-        FOOTER_H = 120   # trước 80 → tăng để chừa chỗ nút Run + Hint
-        QUICK_H  = 140   # trước 90 → chừa đủ chỗ gợi ý code
-
-        editor_y = y + 8
-        editor_h = self.base_height - editor_y - FOOTER_H - QUICK_H
-        editor_rect = pygame.Rect(x, editor_y, max_w, editor_h)
-
-
-        pygame.draw.rect(
-            self.surface, (50, 50, 70), editor_rect, border_radius=6
-        )
-
-        self.draw_editor(editor_rect)
-
-        # ===== QUICK INSERT =====
-        self.draw_quick_insert(editor_rect)
-
-        # ===== HINT BUTTON =====
-        pygame.draw.rect(
-            self.surface, (80, 120, 80), self.hint_btn_rect, border_radius=6
-        )
-        self.surface.blit(
-            self.hint_text,
-            (
-                self.hint_btn_rect.centerx - self.hint_text.get_width() // 2,
-                self.hint_btn_rect.centery - self.hint_text.get_height() // 2,
-            )
-        )
-
-
-        # ===== RUN =====
-        self.surface.blit(self.run_img, self.run_rect)
-
-        # ===== BLIT =====
-        scaled = pygame.transform.scale(self.surface, (self.width, self.height))
-        screen.blit(scaled, (int(self.x), 0))
-        screen.blit(
-            self.btn_close_img if self.opened else self.btn_open_img,
-            self.btn_rect,
-        )
-
-    # ================= EDITOR DRAW =================
-    def draw_editor(self, rect):
-        padding_x = 8
-        padding_y = 6
-        max_text_w = rect.width - padding_x * 2
-
-        visual_lines = []
-        cursor_vy = cursor_vx = 0
-
-        for li, line in enumerate(self.editor.lines):
-            wrapped = self.text_layout.wrap_words(line, max_text_w)
-            remain = self.editor.cursor_col
-            for w in wrapped:
-                visual_lines.append((li, w))
-                if li == self.editor.cursor_line and remain <= len(w):
-                    cursor_vy = len(visual_lines) - 1
-                    cursor_vx = self.code_font.size(w[:remain])[0]
-                remain -= len(w)
-
-        visible = rect.height // self.line_h
-        self.editor.scroll = max(
-            0, min(self.editor.scroll, len(visual_lines) - visible)
-        )
-
-        clip = self.surface.get_clip()
+    def _draw_editor_text(self, rect):
+        old_clip = self.surface.get_clip()
         self.surface.set_clip(rect)
+        
+        start_line = self.editor.scroll
+        visible_lines = rect.height // self.line_h + 1
+        end_line = min(len(self.editor.lines), start_line + visible_lines)
+        
+        gutter_w = 40
+        text_x = rect.x + gutter_w + 5
+        ty = rect.y + 10
+        
+        # Gutter
+        pygame.draw.rect(self.surface, (30, 32, 40), (rect.x, rect.y, gutter_w, rect.height))
+        pygame.draw.line(self.surface, (60, 60, 60), (rect.x + gutter_w, rect.y), (rect.x + gutter_w, rect.y + rect.height))
+        
+        for i in range(start_line, end_line):
+            line = self.editor.lines[i]
+            
+            # Highlight current line
+            if i == self.editor.cursor_line:
+                pygame.draw.rect(self.surface, (45, 45, 55), 
+                                 (rect.x + gutter_w, ty - 2, rect.width - gutter_w, self.line_h))
 
-        cy = rect.y + padding_y
-        for i in range(
-            self.editor.scroll,
-            min(len(visual_lines), self.editor.scroll + visible),
-        ):
-            _, text = visual_lines[i]
-            self.surface.blit(
-                self.code_font.render(text, True, (150, 255, 150)),
-                (rect.x + padding_x, cy),
-            )
-            if i == cursor_vy and self.cursor_visible:
-                cx = rect.x + padding_x + cursor_vx
-                pygame.draw.line(
-                    self.surface,
-                    (255, 255, 255),
-                    (cx, cy),
-                    (cx, cy + self.code_font.get_height()),
-                )
-            cy += self.line_h
+            # Line Number
+            num_s = self.code_font.render(str(i+1), True, (100, 100, 100))
+            self.surface.blit(num_s, (rect.x + gutter_w - num_s.get_width() - 5, ty))
+            
+            # Code
+            code_s = self.code_font.render(line, True, COLOR_TEXT_MAIN)
+            self.surface.blit(code_s, (text_x, ty))
+            
+            # Cursor
+            if i == self.editor.cursor_line and self.cursor_visible:
+                w = self.code_font.size(line[:self.editor.cursor_col])[0]
+                cx = text_x + w
+                pygame.draw.line(self.surface, (255, 255, 0), (cx, ty), (cx, ty + self.line_h), 2)
 
-        self.surface.set_clip(clip)
+            ty += self.line_h
 
-    # ================= QUICK INSERT DRAW =================
-    def draw_quick_insert(self, editor_rect):
-        self.example_rects.clear()
+        self.surface.set_clip(old_clip)
 
-        y = editor_rect.bottom + 8
-        max_w = self.base_width - 40
-
-        if not self.hint_examples:
-            return
-
-        title = self.font.render("GỢI Ý CODE:", True, (180, 200, 255))
-        self.surface.blit(title, (20 + 6, y))
-        y += title.get_height() + 8
-
-        line_h = self.code_font.get_height()
-        box_h = line_h + 8   # padding trên + dưới
-
-        for code in self.hint_examples[:3]:
-            r = pygame.Rect(20 + 16, y, max_w - 32, box_h)
-
-            pygame.draw.rect(self.surface, (55, 55, 75), r, border_radius=5)
-
-            text_surf = self.code_font.render(code, True, (160, 235, 160))
-            self.surface.blit(
-                text_surf,
-                (
-                    r.x + 6,
-                    r.y + (box_h - line_h) // 2 - 2
-                ),
-            )
-
-            self.example_rects.append((r, code))
-            y += box_h + 6
-
-    # ================= POPUP HINT =================
     def draw_hint_popup(self, screen):
         if not self.show_hint:
             return
 
-        popup_w = 260
-        max_text_w = popup_w - 24
-
-        popup_h = self.text_layout.calc_block_height(
-            self.hints,
-            max_text_w,
-            has_title=bool(self.hint_title),
-        )
-
-        btn_x = self.x + self.hint_btn_rect.left * self.scale
-        btn_y = self.hint_btn_rect.top * self.scale
-        btn_h = self.hint_btn_rect.height * self.scale
-
-        open_down = btn_y + btn_h + 8
-        open_up = btn_y - popup_h * self.scale - 8
-
-        py = open_down if open_down + popup_h * self.scale <= screen.get_height() else max(8, open_up)
-        px = btn_x - popup_w * self.scale - 10
-
-        popup = pygame.Rect(
-            px, py, popup_w * self.scale, popup_h * self.scale
-        )
-
-        pygame.draw.rect(screen, (30, 30, 45), popup, border_radius=8)
-        pygame.draw.rect(screen, (120, 120, 160), popup, 2, border_radius=8)
-
-        ty = popup.y + 12 * self.scale
-
+        popup_w = 400
+        padding = 20
+        
+        text_height = self.text_layout.calc_block_height(self.hints, popup_w - padding*2, has_title=True)
+        popup_h = text_height + padding*2
+        
+        px = self.x - popup_w - 20
+        py = 50 
+        
+        rect = pygame.Rect(px, py, popup_w, popup_h)
+        
+        shadow_rect = rect.copy()
+        shadow_rect.x += 4
+        shadow_rect.y += 4
+        pygame.draw.rect(screen, (0,0,0, 100), shadow_rect, border_radius=12)
+        
+        pygame.draw.rect(screen, (30, 35, 45), rect, border_radius=12)
+        pygame.draw.rect(screen, COLOR_ACCENT, rect, 2, border_radius=12)
+        
+        curr_y = rect.y + padding
+        
         if self.hint_title:
-            t = self.font.render(self.hint_title, True, (255, 220, 120))
-            t = pygame.transform.scale_by(t, self.scale)
-            screen.blit(t, (popup.x + 12 * self.scale, ty))
-            ty += 22 * self.scale
-
-        self.text_layout.draw_paragraphs(
-            screen,
-            self.hints,
-            popup.x + 12 * self.scale,
-            ty,
-            max_text_w,
-            (230, 230, 240),
-        )
-    def on_resize(self, screen_w, screen_h):
-        # cập nhật scale theo chiều cao
-        self.scale = screen_h / self.base_height
-
-        self.width = int(self.base_width * self.scale)
-        self.height = screen_h
-
-        # cập nhật vị trí panel
-        self.hidden_x = screen_w
-        self.visible_x = screen_w - self.width
-
-        if self.opened:
-            self.x = self.visible_x
-            self.target_x = self.visible_x
-        else:
-            self.x = self.hidden_x
-            self.target_x = self.hidden_x
+            t = self.ui_font.render(self.hint_title, True, COLOR_ACCENT)
+            screen.blit(t, (rect.x + padding, curr_y))
+            curr_y += 30
+            
+        self.text_layout.draw_paragraphs(screen, self.hints, rect.x + padding, curr_y, popup_w - padding*2, (200, 200, 200))

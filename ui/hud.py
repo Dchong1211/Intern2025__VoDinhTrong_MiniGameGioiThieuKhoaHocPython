@@ -1,99 +1,55 @@
 import os
 import pygame
 
-
 class HUD:
     BASE_H = 720
     FONT_PATH = "assets/Font/FVF Fernando 08.ttf"
 
     def __init__(self, item_manager):
         self.item_manager = item_manager
-        self.count_font = pygame.font.Font(
-            self.FONT_PATH,
-            16
-        )
-
-        # ===== INVENTORY =====
+        self.count_font = pygame.font.Font(self.FONT_PATH, 16)
         self.icons = self._load_icons()
-
-        # ===== SETTINGS ICON =====
-        self.setting_icon = pygame.image.load(
-            "assets/Menu/Buttons/Settings.png"
-        ).convert_alpha()
-
+        self.setting_icon = pygame.image.load("assets/Menu/Buttons/Settings.png").convert_alpha()
         self.setting_rect = None
-
-        # ===== SOUND STATE (sync từ main) =====
         self.sound_on = True
-
-        # ===== SLIDE PANEL STATE =====
         self.opened = False
-        self.panel_t = 0.0          # 0 = đóng, 1 = mở
-        self.speed = 5.0            # tốc độ trượt (giống CodePanel)
-
-        # ===== SETTINGS ICON SIZE =====
+        self.panel_t = 0.0
+        self.speed = 5.0
         self.btn_size = 48
         self.gap = 12
-
-        # ===== ICONS =====
-        self.icon_home = pygame.image.load(
-            "assets/Menu/Buttons/Home.png"
-        ).convert_alpha()
-
-        self.icon_levels = pygame.image.load(
-            "assets/Menu/Buttons/Levels.png"
-        ).convert_alpha()
-
-        self.icon_restart = pygame.image.load(
-            "assets/Menu/Buttons/Restart.png"
-        ).convert_alpha()
-
-        self.icon_volume = pygame.image.load(
-            "assets/Menu/Buttons/Volume.png"
-        ).convert_alpha()
-
-        self.icon_unvolume = pygame.image.load(
-            "assets/Menu/Buttons/Unvolume.png"
-        ).convert_alpha()
-
+        self.icon_home = pygame.image.load("assets/Menu/Buttons/Home.png").convert_alpha()
+        self.icon_levels = pygame.image.load("assets/Menu/Buttons/Levels.png").convert_alpha()
+        self.icon_restart = pygame.image.load("assets/Menu/Buttons/Restart.png").convert_alpha()
+        self.icon_volume = pygame.image.load("assets/Menu/Buttons/Volume.png").convert_alpha()
+        self.icon_unvolume = pygame.image.load("assets/Menu/Buttons/Unvolume.png").convert_alpha()
         self.btn_rects = {}
 
-    # ======================================================
-    # LOAD INVENTORY ICONS
-    # ======================================================
     def _load_icons(self):
         base = "assets/Items/Fruits"
         icons = {}
-
+        if not os.path.exists(base):
+            return icons
+            
         for name in self.item_manager.count:
-            sheet = pygame.image.load(
-                os.path.join(base, f"{name}.png")
-            ).convert_alpha()
-            icons[name] = sheet.subsurface((0, 0, 32, 32))
-
+            path = os.path.join(base, f"{name}.png")
+            if os.path.exists(path):
+                sheet = pygame.image.load(path).convert_alpha()
+                icons[name] = sheet.subsurface((0, 0, 32, 32))
         return icons
 
-    # ======================================================
-    # UTILS
-    # ======================================================
     def _scale(self, surf):
         return surf.get_height() / self.BASE_H
 
-    # ======================================================
-    # INPUT
-    # ======================================================
     def handle_event(self, event):
         if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
             return None
 
         mx, my = event.pos
 
-        # ⚙ Toggle settings
         if self.setting_rect and self.setting_rect.collidepoint(mx, my):
             self.opened = not self.opened
             return None
 
-        # Nếu panel đang đóng → không xử lý icon khác
         if self.panel_t <= 0:
             return None
 
@@ -102,75 +58,46 @@ class HUD:
                 if name == "SOUND":
                     return "TOGGLE_SOUND"
                 return name
-
         return None
 
-    # ======================================================
-    # UPDATE
-    # ======================================================
     def update(self, dt):
         if self.opened:
             self.panel_t = min(1.0, self.panel_t + self.speed * dt)
         else:
             self.panel_t = max(0.0, self.panel_t - self.speed * dt)
 
-    # ======================================================
-    # DRAW INVENTORY
-    # ======================================================
-    def _draw_inventory(self, surf, scale):
+    def _draw_inventory(self, surf, scale, right_margin):
         sw, _ = surf.get_size()
-
         icon_size = int(48 * scale)
-        spacing = int(90 * scale)
-        text_gap = int(1 * scale)
+        
+        start_x = sw - right_margin - int(20 * scale)
+        y = int(40 * scale)
 
-        x = sw - int(70 * scale)
-        y = int(42 * scale)
-
+        items_to_draw = []
         for name, icon in self.icons.items():
-            if not self.item_manager.discovered.get(name):
-                continue
-
-            # ===== ICON =====
+            if self.item_manager.discovered.get(name):
+                 items_to_draw.append((name, icon))
+        
+        current_x = start_x
+        for name, icon in items_to_draw:
+            count = self.item_manager.count.get(name, 0)
+            text = self.count_font.render(str(count), True, (255, 255, 255))
+            text = pygame.transform.scale(text, (int(text.get_width()*scale), int(text.get_height()*scale)))
+            
+            text_rect = text.get_rect(topright=(current_x, y + icon_size//4))
+            surf.blit(text, text_rect)
+            
             icon_scaled = pygame.transform.scale(icon, (icon_size, icon_size))
-            icon_rect = icon_scaled.get_rect(topright=(x, y))
+            icon_rect = icon_scaled.get_rect(topright=(text_rect.left - int(5*scale), y))
             surf.blit(icon_scaled, icon_rect)
 
-            # ===== COUNT TEXT =====
-            count = self.item_manager.count.get(name, 0)
+            current_x = icon_rect.left - int(30 * scale)
 
-            text = self.count_font.render(str(count), True, (255, 255, 255))
-            text = pygame.transform.scale(
-                text,
-                (
-                    int(text.get_width() * scale),
-                    int(text.get_height() * scale),
-                )
-            )
-
-            # 🎯 đặt text NGANG HÀNG với icon
-            text_rect = text.get_rect(
-                midleft=(
-                    icon_rect.right + text_gap,
-                    icon_rect.centery
-                )
-            )
-
-            surf.blit(text, text_rect)
-
-            # sang item tiếp theo
-            x -= spacing
-
-
-    # ======================================================
-    # DRAW SETTINGS (SLIDE)
-    # ======================================================
     def _draw_settings(self, surf, scale):
         sw, sh = surf.get_size()
         size = int(self.btn_size * scale)
         gap = int(self.gap * scale)
 
-        # ⚙ SETTING ICON (LUÔN LUÔN HIỆN)
         gx = int(16 * scale)
         gy = sh - size - int(16 * scale)
 
@@ -178,7 +105,6 @@ class HUD:
         surf.blit(gear, (gx, gy))
         self.setting_rect = pygame.Rect(gx, gy, size, size)
 
-        # Nếu panel đóng hoàn toàn → không vẽ icon khác
         if self.panel_t <= 0:
             self.btn_rects.clear()
             return
@@ -191,16 +117,12 @@ class HUD:
         ]
 
         self.btn_rects.clear()
-
-        EXTRA_GAP = int(8 * scale)   # khoảng cách thêm
-        # Điểm gốc: ngay trên nút setting
+        extra_gap = int(8 * scale)
         x_origin = gx + size // 2
         y = gy
 
         for i, (name, icon) in enumerate(icons):
-            x_target = gx + size + EXTRA_GAP + i * (size + gap)
-
-            # 🔥 LERP ĐÚNG: từ ⚙ → vị trí icon
+            x_target = gx + size + extra_gap + i * (size + gap)
             x = x_origin + (x_target - x_origin) * self.panel_t
 
             img = pygame.transform.scale(icon, (size, size))
@@ -209,13 +131,8 @@ class HUD:
             surf.blit(img, rect)
             self.btn_rects[name] = rect
 
-
-    # ======================================================
-    # MAIN DRAW
-    # ======================================================
-    def draw(self, surf, dt):
+    def draw(self, surf, dt, right_margin=0):
         scale = self._scale(surf)
-
         self.update(dt)
-        self._draw_inventory(surf, scale)
+        self._draw_inventory(surf, scale, right_margin)
         self._draw_settings(surf, scale)

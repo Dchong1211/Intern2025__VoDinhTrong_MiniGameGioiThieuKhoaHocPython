@@ -1,47 +1,56 @@
 import pygame
 
-
 class MissionPanel:
     BASE_H = 720
-    FONT_PATH = "assets/Font/FVF Fernando 08.ttf"
+    # Đảm bảo đường dẫn font đúng, nếu lỗi hãy thay bằng None để dùng font mặc định
+    FONT_PATH = "assets/Font/FVF Fernando 08.ttf" 
 
     def __init__(self, screen_w, objective, icons):
         self.screen_w = screen_w
-        self.objective = objective
-        self.icons = icons
+        self.objective = objective # Object chứa dữ liệu nhiệm vụ
+        self.icons = icons         # Dictionary chứa hình ảnh icon
 
         # ===== SIZE =====
-        self.width = 300
-        self.height = 120  # sẽ recalc
+        self.width = 240           # Thu gọn chiều rộng một chút cho gọn
+        self.height = 120          # Sẽ được tính lại tự động
 
-        # ===== SLIDE LEFT → RIGHT =====
+        # ===== SLIDE LEFT -> RIGHT =====
         self.hidden_x = -self.width
         self.visible_x = 0
 
         self.x = self.hidden_x
         self.target_x = self.hidden_x
 
-        self.speed = 1600
+        self.speed = 1200          # Tốc độ trượt
         self.opened = False
 
         # ===== FONT =====
-        self.font_title = pygame.font.Font(self.FONT_PATH, 18)
-        self.font_item = pygame.font.Font(self.FONT_PATH, 14)
+        try:
+            self.font_title = pygame.font.Font(self.FONT_PATH, 18)
+            self.font_item = pygame.font.Font(self.FONT_PATH, 12) # Font nhỏ hơn chút để vừa vặn
+        except:
+            self.font_title = pygame.font.SysFont("Arial", 18, bold=True)
+            self.font_item = pygame.font.SysFont("Arial", 12)
 
         # ===== TOGGLE BUTTON =====
         self.btn_size = 40
         self.btn_rect = pygame.Rect(0, 0, self.btn_size, self.btn_size)
 
-        self.btn_show = pygame.transform.scale(
-            pygame.image.load("assets/Menu/Buttons/Hide.png").convert_alpha(),
-            (self.btn_size, self.btn_size)
-        )
-        self.btn_hide = pygame.transform.scale(
-            pygame.image.load("assets/Menu/Buttons/Show.png").convert_alpha(),
-            (self.btn_size, self.btn_size)
-        )
-
-        self.recalc_height()
+        # Load hình nút (Dùng try-except để tránh crash nếu thiếu ảnh)
+        try:
+            self.btn_show = pygame.transform.scale(
+                pygame.image.load("assets/Menu/Buttons/Hide.png").convert_alpha(),
+                (self.btn_size, self.btn_size)
+            )
+            self.btn_hide = pygame.transform.scale(
+                pygame.image.load("assets/Menu/Buttons/Show.png").convert_alpha(),
+                (self.btn_size, self.btn_size)
+            )
+        except:
+            self.btn_show = pygame.Surface((self.btn_size, self.btn_size))
+            self.btn_show.fill((255, 255, 0)) # Vàng
+            self.btn_hide = pygame.Surface((self.btn_size, self.btn_size))
+            self.btn_hide.fill((200, 200, 200)) # Xám
 
     # ==================================================
     # CONTROL
@@ -55,13 +64,18 @@ class MissionPanel:
         self.target_x = self.hidden_x
 
     def toggle(self):
-        self.open() if not self.opened else self.close()
+        if self.opened:
+            self.close()
+        else:
+            self.open()
 
     # ==================================================
     # EVENT
     # ==================================================
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # Cộng thêm offset self.x vì btn_rect di chuyển theo panel
+            # Tuy nhiên trong update ta đã gán btn_rect.x chuẩn rồi nên chỉ cần check collide
             if self.btn_rect.collidepoint(event.pos):
                 self.toggle()
 
@@ -69,99 +83,120 @@ class MissionPanel:
     # UPDATE
     # ==================================================
     def update(self, dt):
-        if self.x < self.target_x:
-            self.x = min(self.target_x, self.x + self.speed * dt)
-        elif self.x > self.target_x:
-            self.x = max(self.target_x, self.x - self.speed * dt)
+        # Hiệu ứng trượt mượt mà
+        if self.x != self.target_x:
+            if self.x < self.target_x:
+                self.x += self.speed * dt
+                if self.x > self.target_x: self.x = self.target_x
+            elif self.x > self.target_x:
+                self.x -= self.speed * dt
+                if self.x < self.target_x: self.x = self.target_x
 
-        # toggle button nằm giữa panel
+        # Cập nhật vị trí nút Toggle luôn dính bên cạnh Panel
         self.btn_rect.x = int(self.x + self.width)
-        self.btn_rect.y = int(self.height // 2 - self.btn_size // 2)
+        # Nút nằm giữa theo chiều dọc panel (hoặc cố định ở trên cùng tùy bạn)
+        # Ở đây mình để cố định cách top 10px cho dễ bấm
+        self.btn_rect.y = 10 
 
     # ==================================================
-    # SIZE
+    # SIZE CALCULATION
     # ==================================================
     def recalc_height(self):
-        if not self.objective or not self.objective.objectives:
-            self.height = 120
+        """Tính toán chiều cao bảng dựa trên số lượng nhiệm vụ"""
+        if not self.objective or not hasattr(self.objective, 'objectives'):
+            self.height = 80
+            return
+
+        items = self.objective.objectives
+        if not items:
+            self.height = 80
             return
 
         pad = 14
-        gap = 8
-        icon_size = 36
-
+        gap = 6
         title_h = self.font_title.get_height()
-        item_h = max(self.font_item.get_height(), icon_size)
+        # Chiều cao mỗi dòng item (lấy max giữa text và icon)
+        item_h = 32 # Cố định chiều cao dòng cho đều
 
-        self.height = (
-            pad * 2
-            + title_h
-            + gap
-            + len(self.objective.objectives) * (item_h + gap)
-        )
+        # Công thức: Padding trên + Title + Gap + (Số dòng * chiều cao dòng) + Padding dưới
+        self.height = (pad * 2) + title_h + gap + (len(items) * (item_h + gap))
 
     # ==================================================
     # DRAW
     # ==================================================
     def draw(self, screen):
-        if not self.objective or not self.objective.objectives:
+        # 1. QUAN TRỌNG: Tính lại chiều cao trước khi vẽ
+        # Để đảm bảo nếu có thêm trái cây mới, bảng sẽ dài ra
+        self.recalc_height()
+
+        if not self.objective:
             return
 
-        pad = 14
-        gap = 8
-        icon_size = 36
-        y = pad
-
+        # Lấy dữ liệu
+        objectives_data = getattr(self.objective, 'objectives', {})
+        
+        # Tạo bề mặt Panel (Background)
         panel = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        panel.fill((0, 0, 0, 180))
+        panel.fill((0, 0, 0, 180)) # Màu đen trong suốt
+        
+        # Viền trang trí (Optional)
+        pygame.draw.rect(panel, (255, 215, 0), (0, 0, self.width, self.height), 2)
 
-        # ===== TITLE =====
-        title = self.font_title.render("MISSION", True, (255, 220, 120))
-        panel.blit(
-            title,
-            ((self.width - title.get_width()) // 2, y)
-        )
-        y += title.get_height() + gap
+        pad = 14
+        gap = 6
+        current_y = pad
 
-        # ===== OBJECTIVES =====
-        for name, data in self.objective.objectives.items():
-            done = data["collected"] >= data["required"]
-            color = (0, 220, 0) if done else (255, 255, 255)
+        # ===== VẼ TITLE "MISSION" =====
+        title_surf = self.font_title.render("MISSION", True, (255, 215, 0))
+        # Căn giữa title
+        title_x = (self.width - title_surf.get_width()) // 2
+        panel.blit(title_surf, (title_x, current_y))
+        
+        current_y += title_surf.get_height() + gap
 
-            # TEXT NAME (TRÁI)
-            name_text = self.font_item.render(name, True, color)
-            panel.blit(name_text, (pad, y))
+        # ===== VẼ DANH SÁCH FRUITS =====
+        icon_size = 28 # Kích thước icon vẽ ra
+        line_height = 32 # Chiều cao dành cho 1 dòng
 
-            # ICON + COUNT (PHẢI – CÙNG HÀNG)
+        for name, data in objectives_data.items():
+            current_val = data.get("collected", 0)
+            target_val = data.get("required", 1)
+            is_done = current_val >= target_val
+            
+            # Màu sắc: Xanh lá nếu xong, Trắng nếu chưa
+            text_color = (100, 255, 100) if is_done else (255, 255, 255)
+
+            # 1. Tên trái cây (Căn lề trái)
+            name_surf = self.font_item.render(name, True, text_color)
+            # Căn giữa theo chiều dọc của dòng
+            name_y = current_y + (line_height - name_surf.get_height()) // 2
+            panel.blit(name_surf, (pad, name_y))
+
+            # 2. Số lượng "0/6" (Căn lề phải ngoài cùng)
+            count_str = f"{current_val}/{target_val}"
+            count_surf = self.font_item.render(count_str, True, text_color)
+            
+            count_x = self.width - pad - count_surf.get_width()
+            count_y = current_y + (line_height - count_surf.get_height()) // 2
+            panel.blit(count_surf, (count_x, count_y))
+
+            # 3. Icon (Nằm bên trái của số lượng)
             if name in self.icons:
-                icon = pygame.transform.scale(
-                    self.icons[name], (icon_size, icon_size)
-                )
+                original_icon = self.icons[name]
+                if original_icon:
+                    scaled_icon = pygame.transform.scale(original_icon, (icon_size, icon_size))
+                    # Vị trí icon: Bên trái text số lượng - 5px padding
+                    icon_x = count_x - icon_size - 8
+                    icon_y = current_y + (line_height - icon_size) // 2
+                    panel.blit(scaled_icon, (icon_x, icon_y))
 
-                right_x = self.width - pad - icon_size
-                panel.blit(icon, (right_x, y))
+            # Tăng Y để vẽ dòng tiếp theo
+            current_y += line_height + gap
 
-                count_text = self.font_item.render(
-                    f"{data['collected']}/{data['required']}",
-                    True,
-                    color
-                )
-
-                panel.blit(
-                    count_text,
-                    (
-                        right_x - count_text.get_width() - 6,
-                        y + (icon_size - count_text.get_height()) // 2
-                    )
-                )
-
-            y += max(icon_size, name_text.get_height()) + gap
-
-        # ===== BLIT PANEL =====
+        # ===== VẼ PANEL LÊN MÀN HÌNH CHÍNH =====
         screen.blit(panel, (int(self.x), 0))
 
-        # ===== TOGGLE BUTTON =====
-        screen.blit(
-            self.btn_hide if self.opened else self.btn_show,
-            self.btn_rect
-        )
+        # ===== VẼ NÚT TOGGLE =====
+        # Vẽ nút nằm đè lên layer cuối cùng
+        btn_img = self.btn_hide if self.opened else self.btn_show
+        screen.blit(btn_img, self.btn_rect)
