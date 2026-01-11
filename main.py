@@ -135,6 +135,7 @@ while running:
                 code_panel.on_resize(*screen.get_size())
 
             elif event.key == pygame.K_ESCAPE:
+                # Đóng các bảng nếu đang mở
                 if code_panel.opened:
                     code_panel.close()
                     input_mode = INPUT_CONTROL
@@ -180,11 +181,15 @@ while running:
 
             mission_panel.handle_event(event)
             result = code_panel.handle_event(event)
+            
+            # Cập nhật chế độ nhập liệu nếu code panel mở
+            if code_panel.opened:
+                input_mode = INPUT_CODE
 
             # ===== RUN CODE =====
             if isinstance(result, list):
                 level_manager.run_code(result)
-                input_mode = INPUT_CONTROL
+                input_mode = INPUT_CONTROL # Trả quyền sau khi chạy
 
             if action == "HOME":
                 next_state = GameState.MENU
@@ -216,11 +221,25 @@ while running:
             code_panel.close()
             last_codepanel_level = level_manager.current_level
 
-        keys = None
-        if input_mode == INPUT_CONTROL:
-            keys = pygame.key.get_pressed()
+        # --- LOGIC FIX LỖI WIN+SPACE (QUAN TRỌNG) ---
+        player_keys = None
+        
+        # Chỉ nhận phím khi:
+        # 1. Đang ở chế độ điều khiển (CONTROL)
+        # 2. Không mở Code Panel
+        # 3. Không mở Mission Panel
+        # 4. Cửa sổ game đang được active (get_focused)
+        is_input_allowed = (input_mode == INPUT_CONTROL) and \
+                           (not code_panel.opened) and \
+                           (not mission_panel.opened) and \
+                           pygame.key.get_focused()
 
-        level_manager.update(dt, keys)
+        if is_input_allowed:
+            player_keys = pygame.key.get_pressed()
+        
+        # Gửi phím (hoặc None) vào level manager
+        level_manager.update(dt, player_keys)
+        # --------------------------------------------
 
         mission_panel.update(dt)
         code_panel.update(dt)
