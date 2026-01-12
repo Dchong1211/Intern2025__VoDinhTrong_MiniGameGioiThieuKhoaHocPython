@@ -1,0 +1,68 @@
+{
+  "1": {
+    "id": 1,
+    "difficulty": 1,
+    "title": "Bước đi đầu tiên",
+    "control_mode": "code",
+    "instruction": [
+      "Chào mừng đến với Code Fruit!",
+      "Nhiệm vụ: Hãy viết lệnh để đưa nhân vật đi đến cờ đích."
+    ],
+    "guide": {
+      "title": "Tài liệu: Hàm Di Chuyển",
+      "description": [
+        "Hàm: move_right(steps)",
+        "---------------------------",
+        "Chức năng: Di chuyển nhân vật sang phải.",
+        "Tham số 'steps': Số bước muốn đi (số nguyên).",
+        "Ví dụ: move_right(5) -> Đi 5 bước."
+      ]
+    }
+  },
+  "2": {
+    "id": 2,
+    "difficulty": 2,
+    "title": "Làm quen điều khiển",
+    "control_mode": "keyboard",
+    "instruction": [
+      "Level này KHÔNG dùng code.",
+      "Nhiệm vụ: Dùng bàn phím điều khiển nhân vật chạm vào cờ."
+    ],
+    "keyboard_control": {
+      "left": "A",
+      "right": "D",
+      "jump": "SPACE"
+    },
+    "guide": {
+      "title": "Hướng dẫn: Phím tắt",
+      "description": [
+        "Hệ thống điều khiển cơ bản:",
+        "---------------------------",
+        "[ A ]     : Đi sang trái",
+        "[ D ]     : Đi sang phải",
+        "[ SPACE ] : Nhảy lên cao"
+      ]
+    }
+  },
+  "3": {
+    "id": 3,
+    "difficulty": 2,
+    "title": "Vòng lặp (Loop)",
+    "control_mode": "code",
+    "instruction": [
+      "Quãng đường đến đích khá xa.",
+      "Nhiệm vụ: Sử dụng vòng lặp để nhân vật đi nhiều bước mà code vẫn ngắn gọn."
+    ],
+    "guide": {
+      "title": "Tài liệu: Vòng lặp For",
+      "description": [
+        "Cấu trúc: for i in range(n):",
+        "---------------------------",
+        "Chức năng: Lặp lại hành động bên trong 'n' lần.",
+        "Lưu ý: Các dòng lệnh bên trong vòng lặp phải",
+        "được lùi đầu dòng (Indent/Tab).",
+        "Ví dụ: range(3) sẽ chạy 3 lần."
+      ]
+    }
+  }
+}

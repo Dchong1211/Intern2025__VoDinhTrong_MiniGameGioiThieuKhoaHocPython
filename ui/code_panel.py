@@ -1,5 +1,6 @@
 import pygame
 import json
+import os
 from ui.ui_text import UITextLayout
 from ui.code_editor import CodeEditor
 
@@ -8,7 +9,7 @@ COLOR_BG = (25, 27, 35)
 COLOR_BTN_DEFAULT = (60, 65, 80)
 COLOR_TEXT_MAIN = (230, 230, 240)
 COLOR_ACCENT = (80, 200, 255)
-COLOR_SELECTION = (60, 100, 150) # Màu nền khi bôi đen
+COLOR_SELECTION = (60, 100, 150) 
 
 class CommandBtn:
     def __init__(self, text, code_snippet, color):
@@ -30,14 +31,13 @@ class CommandBtn:
         surface.blit(txt_surf, (tx, ty))
 
 class CodePanel:
-    def __init__(self, x_pos, width, height):
+    def __init__(self, x_pos, width, height, config_path="data/levels_config.json"):
         self.width = width
         self.height = height 
         self.x = x_pos 
         self.surface = pygame.Surface((self.width, self.height))
 
         # --- SETUP KEY REPEAT ---
-        # Cho phép giữ phím để xóa/nhập liên tục (delay 400ms, speed 30ms)
         pygame.key.set_repeat(400, 30)
 
         # --- FONTS ---
@@ -55,14 +55,15 @@ class CodePanel:
         self.editor = CodeEditor(self.code_font, self.line_h)
         self.text_layout = UITextLayout(self.ui_font, line_height=24)
 
-        # --- DATA ---
+        # --- DATA STORAGE ---
+        self.all_quests_data = {} 
         self.title = "MISSION CONTROL"
         self.instructions = []
         self.hint_title = ""
         self.hints = []
         self.show_hint = False
 
-        # --- COMMAND BUTTONS (Đã sửa Indent thành 4 spaces) ---
+        # --- COMMAND BUTTONS ---
         self.commands = [
             CommandBtn("MOVE RIGHT", "move_right(1)", (50, 120, 180)),
             CommandBtn("MOVE LEFT", "move_left(1)", (50, 120, 180)),
@@ -71,12 +72,14 @@ class CodePanel:
             CommandBtn("INDENT (TAB)", "    ", (100, 100, 110)), 
         ]
 
-        # --- RECTS ---
+        # --- RECTS & ASSETS ---
         self.run_btn_rect = pygame.Rect(0, 0, 160, 50)
         self.hint_btn_rect = pygame.Rect(0, 0, 40, 40)
         self.editor_rect_cache = pygame.Rect(0,0,0,0)
         
-        # --- ASSETS ---
+        # Biến lưu vị trí Y động của các thành phần layout
+        self.cmd_label_y = 160 
+
         self.icon_run = self._make_run_button_img((160, 50))
         self.lbl_hint = self.ui_font.render("?", True, COLOR_ACCENT)
 
@@ -84,6 +87,8 @@ class CodePanel:
         self.cursor_timer = 0
         self.cursor_visible = True
         
+        # Load data sau khi init xong biến
+        self.load_all_quests(config_path) 
         self.on_resize(x_pos + width, height)
 
     def _make_run_button_img(self, size):
@@ -95,49 +100,137 @@ class CodePanel:
         s.blit(txt, ((size[0]-txt.get_width())//2, (size[1]-txt.get_height())//2))
         return s
 
-    def load_from_json(self, path):
+    # --- HÀM MỚI 1: TÍNH CHIỀU CAO VĂN BẢN MÀ KHÔNG VẼ ---
+    def _calc_text_height(self, text, font, max_width):
+        words = text.split(' ')
+        lines = []
+        current_line = []
+        
+        for word in words:
+            test_line = ' '.join(current_line + [word])
+            w, h = font.size(test_line)
+            if w < max_width:
+                current_line.append(word)
+            else:
+                lines.append(' '.join(current_line))
+                current_line = [word]
+        lines.append(' '.join(current_line))
+        
+        line_height = font.get_height() + 4
+        return len(lines) * line_height
+
+    # --- HÀM MỚI 2: TÍNH TOÁN LẠI VỊ TRÍ (LAYOUT) ---
+    def recalculate_layout(self):
+        padding = 20
+        max_w = self.width - padding * 2
+        
+        # Bắt đầu tính Y từ dưới Title
+        current_y = 50 
+
+        # 1. Tính chiều cao phần Instructions
+        if self.instructions:
+            for line in self.instructions:
+                h = self._calc_text_height(line, self.small_font, max_w)
+                current_y += h + 5 
+        else:
+            h = self._calc_text_height("No instructions.", self.small_font, max_w)
+            current_y += h + 5
+            
+        # 2. Đặt vị trí label "Click buttons..."
+        self.cmd_label_y = current_y + 10
+        
+        # 3. Đặt vị trí các nút bấm
+        start_y_buttons = self.cmd_label_y + 25
+        btn_h = 40
+        cols = 2
+        col_w = (self.width - padding*3) // cols
+        
+        for i, cmd in enumerate(self.commands):
+            row = i // cols
+            col = i % cols
+            bx = padding + col * (col_w + padding)
+            by = start_y_buttons + row * (btn_h + 15)
+            cmd.update_rect(bx, by, col_w, btn_h)
+            
+        # 4. Tính toán Editor & Nút Run
+        rows = (len(self.commands) + cols - 1) // cols
+        buttons_bottom = start_y_buttons + rows * (btn_h + 15)
+        
+        self.run_btn_rect.midbottom = (self.width // 2, self.height - 25)
+        
+        y_editor = buttons_bottom + 40 # Khoảng cách từ nút code tới editor
+        footer_h = 90
+        editor_h = max(50, self.height - y_editor - footer_h) # Đảm bảo không bị âm
+        
+        self.editor_rect_cache = pygame.Rect(padding, y_editor, self.width - padding*2, editor_h)
+
+    def load_all_quests(self, path):
         try:
             with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            self.title = data.get("title", "Mission")
-            self.instructions = data.get("instruction", [])
-            hint_data = data.get("hint", {})
-            self.hint_title = hint_data.get("title", "Gợi ý")
-            self.hints = hint_data.get("description", [])
-            self.editor.lines = data.get("solution", [""])
-            self.editor.clear_selection()
+                self.all_quests_data = json.load(f)
+            print(f"[CodePanel] Loaded quests from {path}")
+        except FileNotFoundError:
+            print(f"[CodePanel] ERROR: Không tìm thấy file config tại '{path}'")
+            self.all_quests_data = {}
         except Exception as e:
-            print(f"Error loading level JSON: {e}")
+            print(f"[CodePanel] Error loading config JSON: {e}")
+            self.all_quests_data = {}
+
+    def load_level(self, level_id):
+        str_id = str(level_id)
+        
+        # Reset editor
+        self.editor.clear_selection()
+        self.editor.scroll = 0
+        self.editor.cursor_line = 0
+        self.editor.cursor_col = 0
+        
+        if str_id in self.all_quests_data:
+            data = self.all_quests_data[str_id]
+            
+            # 1. Load Instruction
+            self.title = data.get("title", f"Level {level_id}")
+            raw_instr = data.get("instruction", [])
+            self.instructions = raw_instr if isinstance(raw_instr, list) else [str(raw_instr)]
+            
+            # 2. Load Guide
+            guide_data = data.get("guide", data.get("hint", {}))
+            self.hint_title = guide_data.get("title", "Tài liệu kỹ thuật")
+            self.hints = guide_data.get("description", ["Không có tài liệu."])
+            
+            # 3. Control Mode
+            control_mode = data.get("control_mode", "code")
+            if control_mode == "keyboard":
+                self.title += " (Phím)"
+                self.editor.lines = [
+                    "# LEVEL ĐIỀU KHIỂN BẰNG PHÍM",
+                    "# Dùng phím A, D, Space",
+                    "# để hoàn thành màn chơi."
+                ]
+            else:
+                self.editor.lines = ["# Viết giải pháp của bạn ở đây:"]
+            
+            print(f"[CodePanel] Displaying Level {level_id}")
+        else:
+            print(f"[CodePanel] WARNING: Không tìm thấy level {level_id}")
+            self.title = "No Data"
+            self.instructions = ["Chưa có dữ liệu level này."]
+            self.editor.lines = ["# No data"]
+        
+        # === FIX: TÍNH LẠI LAYOUT SAU KHI LOAD TEXT MỚI ===
+        self.recalculate_layout()
 
     def on_resize(self, screen_w, screen_h):
         self.height = screen_h
+        self.width = 320 
         self.x = screen_w - self.width
         self.surface = pygame.Surface((self.width, self.height))
 
         padding = 20
         self.hint_btn_rect.topright = (self.width - padding, padding)
 
-        btn_h = 40
-        cols = 2
-        col_w = (self.width - padding*3) // cols
-        start_y = 100
-        
-        for i, cmd in enumerate(self.commands):
-            row = i // cols
-            col = i % cols
-            bx = padding + col * (col_w + padding)
-            by = start_y + row * (btn_h + 15)
-            cmd.update_rect(bx, by, col_w, btn_h)
-            
-        rows = (len(self.commands) + cols - 1) // cols
-        current_btn_bottom = start_y + rows * (btn_h + 15)
-
-        self.run_btn_rect.midbottom = (self.width // 2, self.height - 25)
-
-        y_editor = current_btn_bottom + 50
-        footer_h = 90
-        editor_h = self.height - y_editor - footer_h
-        self.editor_rect_cache = pygame.Rect(padding, y_editor, self.width - padding*2, editor_h)
+        # === FIX: GỌI HÀM TÍNH TOÁN LAYOUT ===
+        self.recalculate_layout()
 
     def update(self, dt):
         self.cursor_timer += dt
@@ -148,34 +241,30 @@ class CodePanel:
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = event.pos
+            if mx < self.x:
+                return None
+            
             local_x = mx - self.x
             local_y = my
             
-            if mx < self.x: return None
-            
-            # 1. RUN Button
             if self.run_btn_rect.collidepoint(local_x, local_y):
                 return [l for l in self.editor.lines if l.strip()]
 
-            # 2. HINT Button
             if self.hint_btn_rect.collidepoint(local_x, local_y):
                 self.show_hint = not self.show_hint
                 return None
 
-            # 3. COMMAND Buttons
             for cmd in self.commands:
                 if cmd.rect.collidepoint(local_x, local_y):
-                    # Dùng insert_text của editor để đảm bảo đúng logic vùng chọn/cursor
                     self.editor.insert_text(cmd.code)
                     return None
             
-            # 4. CLICK IN EDITOR (Bắt đầu bôi đen)
             if self.editor_rect_cache.collidepoint(local_x, local_y):
                 line, col = self._get_line_col_at(local_x, local_y)
                 self.editor.cursor_line = line
                 self.editor.cursor_col = col
                 self.editor.sel_start = (line, col)
-                self.editor.sel_end = (line, col) # Reset selection point
+                self.editor.sel_end = (line, col)
                 self.editor.is_dragging = True
             else:
                 self.editor.clear_selection()
@@ -184,7 +273,6 @@ class CodePanel:
             self.editor.is_dragging = False
 
         elif event.type == pygame.MOUSEMOTION:
-            # Xử lý kéo chuột để bôi đen
             if self.editor.is_dragging:
                 mx, my = event.pos
                 local_x = mx - self.x
@@ -208,7 +296,6 @@ class CodePanel:
         return None
 
     def _get_line_col_at(self, local_x, local_y):
-        """Chuyển đổi toạ độ pixel -> dòng, cột"""
         gutter_w = 40
         text_x = self.editor_rect_cache.x + gutter_w + 5
         rel_y = local_y - self.editor_rect_cache.y
@@ -218,46 +305,85 @@ class CodePanel:
         if line_idx >= len(self.editor.lines): line_idx = len(self.editor.lines) - 1
         
         line_text = self.editor.lines[line_idx]
-        
-        # Tìm cột dựa trên độ rộng font
         rel_x = local_x - text_x
         if rel_x < 0: return line_idx, 0
         
-        # Duyệt từng ký tự để xem chuột đang ở ký tự thứ mấy
         cum_w = 0
         for i, char in enumerate(line_text):
             cw = self.code_font.size(char)[0]
             if cum_w + cw / 2 > rel_x:
                 return line_idx, i
             cum_w += cw
-        
         return line_idx, len(line_text)
+
+    def _draw_wrapped_text(self, surface, text, x, y, max_width, font, color):
+        words = text.split(' ')
+        lines = []
+        current_line = []
+        
+        for word in words:
+            test_line = ' '.join(current_line + [word])
+            w, h = font.size(test_line)
+            if w < max_width:
+                current_line.append(word)
+            else:
+                lines.append(' '.join(current_line))
+                current_line = [word]
+        lines.append(' '.join(current_line))
+        
+        current_y = y
+        line_height = font.get_height() + 4
+        for line in lines:
+            txt_surf = font.render(line, True, color)
+            surface.blit(txt_surf, (x, current_y))
+            current_y += line_height
+        
+        return current_y
 
     def draw(self, screen):
         self.surface.fill(COLOR_BG)
         pygame.draw.line(self.surface, (100, 100, 100), (0,0), (0, self.height), 2)
         padding = 20
         
-        # Header & UI
+        # 1. Header Title
         title_surf = self.ui_font.render(self.title, True, COLOR_ACCENT)
         self.surface.blit(title_surf, (padding, padding))
         
+        # 2. Hint Button
         pygame.draw.rect(self.surface, (60, 60, 70), self.hint_btn_rect, border_radius=20)
         pygame.draw.rect(self.surface, COLOR_ACCENT, self.hint_btn_rect, 2, border_radius=20)
         lbl_rect = self.lbl_hint.get_rect(center=self.hint_btn_rect.center)
         self.surface.blit(self.lbl_hint, lbl_rect)
         
-        instr = self.small_font.render("Click buttons to code:", True, (180, 180, 180))
-        self.surface.blit(instr, (padding, 60))
+        # 3. Instructions
+        instr_y = 50
+        max_w = self.width - padding * 2 
+        
+        if self.instructions:
+            for line in self.instructions:
+                instr_y = self._draw_wrapped_text(
+                    self.surface, line, padding, instr_y, max_w, self.small_font, (200, 200, 200)
+                )
+                instr_y += 5 
+        else:
+            instr_y = self._draw_wrapped_text(
+                self.surface, "No instructions.", padding, instr_y, max_w, self.small_font, (150, 150, 150)
+            )
+            
+        # 4. Commands Buttons
+        # === FIX: DÙNG VỊ TRÍ ĐÃ TÍNH TOÁN THAY VÌ 160 CỐ ĐỊNH ===
+        instr_lbl = self.small_font.render("Click buttons to code:", True, (150, 150, 150))
+        self.surface.blit(instr_lbl, (padding, self.cmd_label_y))
         
         for cmd in self.commands:
             cmd.draw(self.surface)
 
+        # 5. Editor
+        # Vị trí editor đã được update trong recalculate_layout, chỉ việc vẽ
         lbl_code_y = self.editor_rect_cache.y - 25
         lbl_code = self.small_font.render("YOUR SOLUTION:", True, (255, 255, 255))
         self.surface.blit(lbl_code, (padding, lbl_code_y))
 
-        # Editor BG
         pygame.draw.rect(self.surface, (20, 22, 28), self.editor_rect_cache)
         pygame.draw.rect(self.surface, (60, 65, 80), self.editor_rect_cache, 2)
         
@@ -277,61 +403,38 @@ class CodePanel:
         text_x = rect.x + gutter_w + 5
         ty = rect.y + 10
         
-        # Gutter
         pygame.draw.rect(self.surface, (30, 32, 40), (rect.x, rect.y, gutter_w, rect.height))
         pygame.draw.line(self.surface, (60, 60, 60), (rect.x + gutter_w, rect.y), (rect.x + gutter_w, rect.y + rect.height))
         
-        # Get Selection Range
         sel_range = self.editor.get_selection_range()
 
         for i in range(start_line, end_line):
             line = self.editor.lines[i]
-            
-            # --- VẼ SELECTION HIGHLIGHT ---
             if sel_range:
                 s, e = sel_range
-                # Nếu dòng này nằm trong vùng chọn
                 if s[0] <= i <= e[0]:
-                    sel_x_start = text_x
-                    sel_width = 0
-                    
-                    # Tính toán cột bắt đầu và kết thúc highlight trên dòng này
                     col_start = 0 if i > s[0] else s[1]
                     col_end = len(line) if i < e[0] else e[1]
-                    
-                    # Tính toạ độ pixel
-                    # Đo độ rộng từ đầu dòng đến col_start
                     px_start = self.code_font.size(line[:col_start])[0]
-                    # Đo độ rộng phần được chọn
                     px_w = self.code_font.size(line[col_start:col_end])[0]
-                    
-                    # Nếu là dòng trống mà đang được chọn (ví dụ chọn hết dòng) thì vẽ 1 cục nhỏ
-                    if px_w == 0 and i < e[0]: 
-                         px_w = 10 # Width ảo để thấy được dòng trống được chọn
-                    
+                    if px_w == 0 and i < e[0]: px_w = 10 
                     highlight_rect = pygame.Rect(text_x + px_start, ty, px_w, self.line_h)
                     pygame.draw.rect(self.surface, COLOR_SELECTION, highlight_rect)
 
-            # --- DRAW LINE NUMBER ---
             num_s = self.code_font.render(str(i+1), True, (100, 100, 100))
             self.surface.blit(num_s, (rect.x + gutter_w - num_s.get_width() - 5, ty))
             
-            # --- DRAW TEXT ---
             code_s = self.code_font.render(line, True, COLOR_TEXT_MAIN)
             self.surface.blit(code_s, (text_x, ty))
             
-            # --- DRAW CURSOR ---
             if i == self.editor.cursor_line and self.cursor_visible:
                 w = self.code_font.size(line[:self.editor.cursor_col])[0]
                 cx = text_x + w
                 pygame.draw.line(self.surface, (255, 255, 0), (cx, ty), (cx, ty + self.line_h), 2)
-
             ty += self.line_h
-
         self.surface.set_clip(old_clip)
 
     def draw_hint_popup(self, screen):
-        # (Giữ nguyên code vẽ hint của bạn)
         if not self.show_hint: return
         popup_w = 400
         padding = 20

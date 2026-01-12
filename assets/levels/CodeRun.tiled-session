@@ -24,7 +24,7 @@
                 5
             ],
             "scale": 2,
-            "selectedLayer": 5,
+            "selectedLayer": 4,
             "viewCenter": {
                 "x": 318.75,
                 "y": 159.75
@@ -34,7 +34,7 @@
             "scale": 1.8884548611111112,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 288.06619168007353,
+                "x": 287.8014249597794,
                 "y": 160.18386577798208
             }
         },
@@ -118,13 +118,15 @@
     "openFiles": [
         "tileset.tsx",
         "level2.tmx",
-        "level1.tmx"
+        "level1.tmx",
+        "level10.tmx"
     ],
     "project": "CodeRun.tiled-project",
     "property.type": "float",
     "recentFiles": [
         "tileset.tsx",
         "level2.tmx",
+        "level10.tmx",
         "level1.tmx",
         "Green.tsx",
         "Blue.tsx"
