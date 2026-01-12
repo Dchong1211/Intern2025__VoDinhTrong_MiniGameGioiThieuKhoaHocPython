@@ -1,5 +1,6 @@
 import sys
 import pygame
+import traceback # Dùng để in lỗi code người chơi ra terminal
 
 from data.save_manager import SaveManager
 from level.level_manager import LevelManager
@@ -24,11 +25,9 @@ pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
 sound = SoundManager()
 
 # ================= CONFIG =================
-# Kích thước mặc định lúc mở game
-DEFAULT_GAME_W, DEFAULT_GAME_H = 960, 540
-PANEL_W = 400 
-BASE_W = DEFAULT_GAME_W + PANEL_W 
-BASE_H = DEFAULT_GAME_H
+BASE_W = 1280
+BASE_H = 720
+PANEL_W = 320 
 
 screen = pygame.display.set_mode((BASE_W, BASE_H), pygame.RESIZABLE)
 pygame.display.set_caption("Code Fruit")
@@ -41,6 +40,44 @@ FPS = 60
 
 fullscreen = False
 windowed_size = (BASE_W, BASE_H)
+
+# ================= COMMAND CLASSES (Cầu nối giữa Code và Player) =================
+# Những class này tương thích với player.py đã sửa (có start và update)
+
+class CmdMove:
+    def __init__(self, direction):
+        self.direction = direction # 1: Right, -1: Left
+        self.target_x = 0
+
+    def start(self, player):
+        # 1. Quay mặt nhân vật
+        player.facing_right = (self.direction == 1)
+        # 2. Gán vận tốc
+        player.vel_x = player.speed * self.direction
+        # 3. Tính đích đến (Snap theo lưới 32px)
+        current_grid = round(player.rect.x / 32)
+        self.target_x = (current_grid + self.direction) * 32
+
+    def update(self, player):
+        # Kiểm tra xem đã đến đích chưa
+        if (self.direction == 1 and player.rect.x >= self.target_x) or \
+           (self.direction == -1 and player.rect.x <= self.target_x):
+            # Snap vị trí cho chính xác
+            player.rect.x = self.target_x
+            player.vel_x = 0
+            return True # Đã xong lệnh
+        return False # Chưa xong
+
+class CmdJump:
+    def start(self, player):
+        # Chỉ nhảy nếu đang ở dưới đất hoặc nhảy đôi
+        if player.on_ground or (player.skills.has("double_jump") and player.jump_count < 2):
+            player.vel_y = player.jump_force
+            player.jump_count += 1
+            player.on_ground = False
+
+    def update(self, player):
+        return True # Nhảy là hành động tức thời, trả về True ngay để thực hiện lệnh tiếp theo (vừa nhảy vừa đi)
 
 # ================= DATA =================
 save = SaveManager()
@@ -65,77 +102,49 @@ level_select = LevelSelect(save)
 
 sound.play_music("assets/sounds/bgm.ogg")
 
-# World Surface (Vẽ map game)
+# World Surface
 WORLD_W, WORLD_H = level_manager.map_w, level_manager.map_h
 world = pygame.Surface((WORLD_W, WORLD_H), pygame.SRCALPHA)
 
 # HUD & Panels
 hud = HUD(level_manager.item_manager)
-
-# Mission Panel
-mission_panel = MissionPanel(
-    DEFAULT_GAME_W, # Chiều rộng vùng game ban đầu
-    level_manager.objective,
-    hud.icons
-)
-
-# Code Panel (Khởi tạo nằm bên phải)
+mission_panel = MissionPanel(BASE_W - PANEL_W, level_manager.objective, hud.icons)
 code_panel = CodePanel(x_pos=BASE_W - PANEL_W, width=PANEL_W, height=BASE_H)
-
 transition = SquareTransition(screen.get_size())
 
 # ================= HELPER FUNCTIONS =================
 
 def handle_resize(w, h):
-    """Hàm xử lý logic khi thay đổi kích thước màn hình (gọi chung cho Resize và F11)"""
     global screen
-    
-    # 1. Cập nhật Screen
     if fullscreen:
         screen = pygame.display.set_mode((w, h), pygame.FULLSCREEN)
     else:
         screen = pygame.display.set_mode((w, h), pygame.RESIZABLE)
 
-    # 2. Cập nhật các thành phần UI
     transition.resize((w, h))
     level_select.on_resize(screen)
-    
-    # 3. Cập nhật Code Panel (QUAN TRỌNG: Phải truyền đúng kích thước màn hình mới)
-    # CodePanel tự tính toán lại vị trí dựa trên width mới truyền vào
     code_panel.on_resize(w, h)
     
-    # 4. Cập nhật Mission Panel 
-    # (Để nút bấm nhận diện đúng toạ độ mới sau khi scale)
     if hasattr(mission_panel, 'on_resize'):
-        # Tính toán chiều rộng khả dụng cho game view (trừ đi phần panel)
         available_game_w = w - PANEL_W
         mission_panel.on_resize(available_game_w, h)
 
 def draw_game_view():
-    """Vẽ vùng game vào phần bên trái màn hình, tự động căn giữa"""
     sw, sh = screen.get_size()
-    
-    # Tính toán vùng trống bên trái (trừ đi Code Panel)
     available_w = sw - PANEL_W
     
-    # Logic giữ tỷ lệ khung hình (Aspect Ratio) cho map
     target_h = sh
     target_w = int(target_h * (WORLD_W / WORLD_H))
     
-    # Nếu map quá rộng so với vùng trống, scale theo chiều ngang
     if target_w > available_w:
         target_w = int(available_w)
         target_h = int(target_w * (WORLD_H / WORLD_W))
 
-    # Scale map từ world surface
     scaled = pygame.transform.scale(world, (target_w, target_h))
     
-    # Vẽ Background đệm (màu tối) cho vùng Game View
-    # Dùng rect để fill đúng vùng bên trái, tránh bị lem màu khi resize
     game_view_rect = pygame.Rect(0, 0, available_w, sh)
     pygame.draw.rect(screen, (20, 20, 25), game_view_rect)
     
-    # Tính toạ độ để vẽ Map căn giữa trong vùng Game View
     draw_x = (available_w - target_w) // 2
     draw_y = (sh - target_h) // 2
     
@@ -151,24 +160,20 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        # ----- Xử lý Resize -----
         elif event.type == pygame.VIDEORESIZE and not fullscreen:
             windowed_size = event.size
             handle_resize(*event.size)
 
-        # ----- Xử lý Fullscreen (F11) -----
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_F11:
                 fullscreen = not fullscreen
                 if fullscreen:
-                    # Lấy độ phân giải màn hình hiện tại
                     info = pygame.display.Info()
                     handle_resize(info.current_w, info.current_h)
                 else:
-                    # Trở về kích thước cửa sổ cũ
                     handle_resize(*windowed_size)
 
-        # ----- Xử lý Input theo State -----
+        # ----- STATE HANDLING -----
         if state == GameState.MENU:
             result = menu.handle_event(event, screen)
             if result == "PLAY" and not transition.is_active():
@@ -195,45 +200,74 @@ while running:
                 next_level = result
                 transition.start_close()
 
+# ----- LEVEL CODE: WRITING CODE -----
         elif state == GameState.LEVEL_CODE:
-            result = code_panel.handle_event(event)
+            # --- FIX: Ưu tiên xử lý Mission Panel trước ---
+            # Nếu đã click vào nút Mission thì không xử lý Code Panel nữa (tránh lỗi click xuyên)
+            if mission_panel.handle_event(event):
+                pass 
+            else:
+                result = code_panel.handle_event(event)
             
-            if isinstance(result, list):
-                level_manager.run_code(result)
-                state = GameState.LEVEL_PLAY 
+                # >>> KHI NGƯỜI CHƠI ẤN NÚT RUN <<<
+                if isinstance(result, list): # result là danh sách các dòng code
+                    print("--- BẮT ĐẦU CHẠY CODE ---")
+                    
+                    # 1. Reset trạng thái Player trước khi chạy
+                    player = level_manager.player
+                    player.reset_code_state()
+                    
+                    # 2. Định nghĩa API
+                    def api_move_right(steps=1):
+                        for _ in range(steps): player.enqueue_command(CmdMove(1))
+                    
+                    def api_move_left(steps=1):
+                        for _ in range(steps): player.enqueue_command(CmdMove(-1))
+                            
+                    def api_jump():
+                        player.enqueue_command(CmdJump())
+
+                    # 3. Tạo môi trường Sandbox
+                    execution_env = {
+                        "move_right": api_move_right,
+                        "move_left": api_move_left,
+                        "jump": api_jump,
+                        "range": range,
+                        "print": print
+                    }
+                    
+                    # 4. Thực thi code
+                    code_str = "\n".join(result)
+                    try:
+                        exec(code_str, {}, execution_env)
+                        state = GameState.LEVEL_PLAY 
+                    except Exception as e:
+                        print(f"Lỗi Code Người Chơi: {e}")
+                        traceback.print_exc()
             
-            elif event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     next_state = GameState.LEVEL_SELECT
                     transition.start_close()
 
-        # ----- PHASE 2: LEVEL PLAY (SỬA LỖI NHẬP CODE) -----
+        # ----- LEVEL PLAY: WATCHING CODE RUN -----
         elif state == GameState.LEVEL_PLAY:
-            # 1. Kiểm tra vị trí chuột xem có đang nằm bên Code Panel không
+            # --- FIX: Luôn cho phép toggle Mission Panel bất kể chuột ở đâu ---
+            mission_panel.handle_event(event)
+
             mouse_pos = pygame.mouse.get_pos()
-            # PANEL_W là chiều rộng panel bên phải. 
-            # Nếu x > (Tổng chiều rộng - Chiều rộng panel) => Chuột đang ở bên phải
             is_hovering_panel = mouse_pos[0] > (screen.get_width() - PANEL_W)
             
-            # --- LOGIC ƯU TIÊN CODE PANEL ---
             if is_hovering_panel:
-                # Nếu chuột đang ở bên Panel, truyền event thẳng cho Panel xử lý
-                # Điều này giúp Textbox nhận được sự kiện click và focus
                 panel_res = code_panel.handle_event(event)
-                
-                # Nếu người dùng nhấn chuột xuống vùng này
+                # Nếu click vào Panel -> Dừng chạy, về lại mode Code
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    # Chuyển ngay sang trạng thái CODE
                     state = GameState.LEVEL_CODE
-                    
-                    # (Tùy chọn) Xóa phím di chuyển đang giữ để nhân vật đứng lại
-                    level_manager.update(dt, None) 
+                    level_manager.player.reset_code_state() # Dừng nhân vật
             
-            # --- LOGIC GAMEPLAY (Nếu không đụng vào Panel) ---
             else:
-                # Chỉ xử lý HUD và Mission khi chuột KHÔNG ở bên Panel
                 action = hud.handle_event(event)
-                mission_panel.handle_event(event)
+                # mission_panel.handle_event(event) # <-- Đã chuyển lên trên đầu
 
                 if action == "HOME":
                     next_state = GameState.MENU
@@ -249,10 +283,10 @@ while running:
                     if sound.enabled: sound.mute(); hud.sound_on = False
                     else: sound.unmute(); hud.sound_on = True
 
-            # Phím tắt chung
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     state = GameState.LEVEL_CODE
+                    level_manager.player.reset_code_state()
 
     # ================= UPDATE & LOGIC =================
     if state in (GameState.LEVEL_CODE, GameState.LEVEL_PLAY):
@@ -262,8 +296,9 @@ while running:
             code_panel.load_from_json(quest_path)
             last_codepanel_level = level_manager.current_level
 
+        # Chỉ cho phép điều khiển phím khi KHÔNG chạy code
         player_keys = None
-        if state == GameState.LEVEL_PLAY:
+        if state == GameState.LEVEL_PLAY and not level_manager.player.code_active:
             if pygame.key.get_focused():
                 player_keys = pygame.key.get_pressed()
         
@@ -271,7 +306,6 @@ while running:
         mission_panel.update(dt)
         code_panel.update(dt)
 
-        # Logic chuyển cảnh từ Level Manager
         if level_manager.request_go_home:
             next_state = GameState.MENU
             transition.start_close()
@@ -291,14 +325,12 @@ while running:
         if (state == GameState.LEVEL_CODE or state == GameState.LEVEL_PLAY) and next_level:
             level_manager.load_level(next_level)
             
-            # Cập nhật kích thước World theo level mới
             WORLD_W, WORLD_H = level_manager.map_w, level_manager.map_h
             world = pygame.Surface((WORLD_W, WORLD_H), pygame.SRCALPHA)
 
-            # Reset HUD và Mission
             hud = HUD(level_manager.item_manager)
             mission_panel = MissionPanel(
-                screen.get_width() - PANEL_W, # Khởi tạo với width hiện tại
+                screen.get_width() - PANEL_W, 
                 level_manager.objective, 
                 hud.icons
             )
@@ -315,7 +347,6 @@ while running:
         transition.start_open()
 
     # ================= DRAW =================
-    # Xoá màn hình trước khi vẽ để tránh lỗi chồng hình khi resize
     screen.fill((0, 0, 0))
 
     if state == GameState.MENU:
@@ -333,14 +364,11 @@ while running:
         world.fill((20, 20, 25))
         level_manager.draw(world)
         
-        # 1. Vẽ Game View (Map)
         draw_game_view() 
         
-        # 2. Vẽ UI Game (Truyền width của Panel để HUD biết đường né)
         hud.draw(screen, dt, right_margin=PANEL_W)
         mission_panel.draw(screen)
-
-        # 3. Vẽ Code Panel (Luôn nằm đè lên bên phải)
+        
         code_panel.draw(screen)
         code_panel.draw_hint_popup(screen)
 

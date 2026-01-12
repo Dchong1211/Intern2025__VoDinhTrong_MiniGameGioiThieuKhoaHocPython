@@ -70,7 +70,7 @@ class HUD:
         sw, _ = surf.get_size()
         icon_size = int(48 * scale)
         
-        start_x = sw - right_margin - int(20 * scale)
+        start_x = sw - right_margin - int(60 * scale)
         y = int(40 * scale)
 
         items_to_draw = []

@@ -5,11 +5,10 @@ from ui.code_editor import CodeEditor
 
 # === COLOR PALETTE ===
 COLOR_BG = (25, 27, 35)
-COLOR_HEADER_BG = (40, 42, 55)
 COLOR_BTN_DEFAULT = (60, 65, 80)
-COLOR_BTN_HOVER = (80, 85, 100)
 COLOR_TEXT_MAIN = (230, 230, 240)
 COLOR_ACCENT = (80, 200, 255)
+COLOR_SELECTION = (60, 100, 150) # Màu nền khi bôi đen
 
 class CommandBtn:
     def __init__(self, text, code_snippet, color):
@@ -23,11 +22,8 @@ class CommandBtn:
         self.rect = pygame.Rect(x, y, w, h)
 
     def draw(self, surface):
-        # Draw Button
         pygame.draw.rect(surface, self.base_color, self.rect, border_radius=8)
         pygame.draw.rect(surface, (255, 255, 255), self.rect, 2, border_radius=8)
-        
-        # Center Text
         txt_surf = self.font.render(self.text, True, (255, 255, 255))
         tx = self.rect.x + (self.rect.width - txt_surf.get_width()) // 2
         ty = self.rect.y + (self.rect.height - txt_surf.get_height()) // 2
@@ -36,11 +32,13 @@ class CommandBtn:
 class CodePanel:
     def __init__(self, x_pos, width, height):
         self.width = width
-        # Height and X will be set in on_resize
         self.height = height 
         self.x = x_pos 
-
         self.surface = pygame.Surface((self.width, self.height))
+
+        # --- SETUP KEY REPEAT ---
+        # Cho phép giữ phím để xóa/nhập liên tục (delay 400ms, speed 30ms)
+        pygame.key.set_repeat(400, 30)
 
         # --- FONTS ---
         try:
@@ -64,13 +62,13 @@ class CodePanel:
         self.hints = []
         self.show_hint = False
 
-        # --- COMMAND BUTTONS ---
+        # --- COMMAND BUTTONS (Đã sửa Indent thành 4 spaces) ---
         self.commands = [
             CommandBtn("MOVE RIGHT", "move_right(1)", (50, 120, 180)),
             CommandBtn("MOVE LEFT", "move_left(1)", (50, 120, 180)),
             CommandBtn("JUMP UP", "jump()", (180, 80, 80)),
             CommandBtn("LOOP 3x", "for i in range(3):", (200, 140, 40)),
-            CommandBtn("INDENT (TAB)", "    ", (100, 100, 110)),
+            CommandBtn("INDENT (TAB)", "    ", (100, 100, 110)), 
         ]
 
         # --- RECTS ---
@@ -85,8 +83,7 @@ class CodePanel:
         # --- STATE ---
         self.cursor_timer = 0
         self.cursor_visible = True
-
-        # Initial Layout Calculation
+        
         self.on_resize(x_pos + width, height)
 
     def _make_run_button_img(self, size):
@@ -104,12 +101,11 @@ class CodePanel:
                 data = json.load(f)
             self.title = data.get("title", "Mission")
             self.instructions = data.get("instruction", [])
-            
             hint_data = data.get("hint", {})
             self.hint_title = hint_data.get("title", "Gợi ý")
             self.hints = hint_data.get("description", [])
-            
-            self.editor.set_lines(data.get("solution", [""]))
+            self.editor.lines = data.get("solution", [""])
+            self.editor.clear_selection()
         except Exception as e:
             print(f"Error loading level JSON: {e}")
 
@@ -118,13 +114,9 @@ class CodePanel:
         self.x = screen_w - self.width
         self.surface = pygame.Surface((self.width, self.height))
 
-        # --- RE-CALCULATE LAYOUT ---
         padding = 20
-        
-        # 1. HINT BUTTON
         self.hint_btn_rect.topright = (self.width - padding, padding)
 
-        # 2. COMMAND BUTTONS
         btn_h = 40
         cols = 2
         col_w = (self.width - padding*3) // cols
@@ -137,15 +129,12 @@ class CodePanel:
             by = start_y + row * (btn_h + 15)
             cmd.update_rect(bx, by, col_w, btn_h)
             
-        # Calculate bottom of buttons for Editor start
         rows = (len(self.commands) + cols - 1) // cols
         current_btn_bottom = start_y + rows * (btn_h + 15)
 
-        # 3. RUN BUTTON (Bottom Center)
         self.run_btn_rect.midbottom = (self.width // 2, self.height - 25)
 
-        # 4. EDITOR
-        y_editor = current_btn_bottom + 30 + 20 # +30 gap + 20 for "YOUR SOLUTION" text
+        y_editor = current_btn_bottom + 50
         footer_h = 90
         editor_h = self.height - y_editor - footer_h
         self.editor_rect_cache = pygame.Rect(padding, y_editor, self.width - padding*2, editor_h)
@@ -159,35 +148,58 @@ class CodePanel:
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = event.pos
-            if mx < self.x:
-                return None
-                
             local_x = mx - self.x
             local_y = my
             
-            # Check RUN
+            if mx < self.x: return None
+            
+            # 1. RUN Button
             if self.run_btn_rect.collidepoint(local_x, local_y):
                 return [l for l in self.editor.lines if l.strip()]
 
-            # Check HINT
+            # 2. HINT Button
             if self.hint_btn_rect.collidepoint(local_x, local_y):
                 self.show_hint = not self.show_hint
                 return None
 
-            # Check Commands
+            # 3. COMMAND Buttons
             for cmd in self.commands:
                 if cmd.rect.collidepoint(local_x, local_y):
-                    self._insert_code(cmd.code)
+                    # Dùng insert_text của editor để đảm bảo đúng logic vùng chọn/cursor
+                    self.editor.insert_text(cmd.code)
                     return None
             
-            # Check Editor
+            # 4. CLICK IN EDITOR (Bắt đầu bôi đen)
             if self.editor_rect_cache.collidepoint(local_x, local_y):
-                self._handle_editor_click(local_x, local_y)
+                line, col = self._get_line_col_at(local_x, local_y)
+                self.editor.cursor_line = line
+                self.editor.cursor_col = col
+                self.editor.sel_start = (line, col)
+                self.editor.sel_end = (line, col) # Reset selection point
+                self.editor.is_dragging = True
+            else:
+                self.editor.clear_selection()
+        
+        elif event.type == pygame.MOUSEBUTTONUP:
+            self.editor.is_dragging = False
+
+        elif event.type == pygame.MOUSEMOTION:
+            # Xử lý kéo chuột để bôi đen
+            if self.editor.is_dragging:
+                mx, my = event.pos
+                local_x = mx - self.x
+                local_y = my
+                if self.editor_rect_cache.collidepoint(local_x, local_y):
+                    line, col = self._get_line_col_at(local_x, local_y)
+                    self.editor.cursor_line = line
+                    self.editor.cursor_col = col
+                    self.editor.sel_end = (line, col)
 
         elif event.type == pygame.MOUSEWHEEL:
             mx, my = pygame.mouse.get_pos()
             if mx > self.x: 
                 self.editor.scroll -= event.y
+                if self.editor.scroll < 0: self.editor.scroll = 0
                 
         elif event.type == pygame.KEYDOWN:
             self.editor.handle_key(event)
@@ -195,62 +207,62 @@ class CodePanel:
 
         return None
 
-    def _insert_code(self, text):
-        current_line = self.editor.lines[self.editor.cursor_line]
-        if current_line.strip() == "":
-            self.editor.lines[self.editor.cursor_line] = text
-        else:
-            self.editor.lines.insert(self.editor.cursor_line + 1, text)
-            self.editor.cursor_line += 1
-        self.editor.cursor_col = len(self.editor.lines[self.editor.cursor_line])
-
-    def _handle_editor_click(self, lx, ly):
-        rel_y = ly - self.editor_rect_cache.y
-        row = int(rel_y // self.line_h) + self.editor.scroll
-        if 0 <= row < len(self.editor.lines):
-            self.editor.cursor_line = row
-            self.editor.cursor_col = len(self.editor.lines[row])
+    def _get_line_col_at(self, local_x, local_y):
+        """Chuyển đổi toạ độ pixel -> dòng, cột"""
+        gutter_w = 40
+        text_x = self.editor_rect_cache.x + gutter_w + 5
+        rel_y = local_y - self.editor_rect_cache.y
+        
+        line_idx = int(rel_y // self.line_h) + self.editor.scroll
+        if line_idx < 0: line_idx = 0
+        if line_idx >= len(self.editor.lines): line_idx = len(self.editor.lines) - 1
+        
+        line_text = self.editor.lines[line_idx]
+        
+        # Tìm cột dựa trên độ rộng font
+        rel_x = local_x - text_x
+        if rel_x < 0: return line_idx, 0
+        
+        # Duyệt từng ký tự để xem chuột đang ở ký tự thứ mấy
+        cum_w = 0
+        for i, char in enumerate(line_text):
+            cw = self.code_font.size(char)[0]
+            if cum_w + cw / 2 > rel_x:
+                return line_idx, i
+            cum_w += cw
+        
+        return line_idx, len(line_text)
 
     def draw(self, screen):
-        # Background
         self.surface.fill(COLOR_BG)
         pygame.draw.line(self.surface, (100, 100, 100), (0,0), (0, self.height), 2)
-        
         padding = 20
         
-        # Header
+        # Header & UI
         title_surf = self.ui_font.render(self.title, True, COLOR_ACCENT)
         self.surface.blit(title_surf, (padding, padding))
         
-        # Hint Button
         pygame.draw.rect(self.surface, (60, 60, 70), self.hint_btn_rect, border_radius=20)
         pygame.draw.rect(self.surface, COLOR_ACCENT, self.hint_btn_rect, 2, border_radius=20)
         lbl_rect = self.lbl_hint.get_rect(center=self.hint_btn_rect.center)
         self.surface.blit(self.lbl_hint, lbl_rect)
         
-        # Instructions Label
         instr = self.small_font.render("Click buttons to code:", True, (180, 180, 180))
         self.surface.blit(instr, (padding, 60))
         
-        # Draw Buttons
         for cmd in self.commands:
             cmd.draw(self.surface)
 
-        # Editor Label
         lbl_code_y = self.editor_rect_cache.y - 25
         lbl_code = self.small_font.render("YOUR SOLUTION:", True, (255, 255, 255))
         self.surface.blit(lbl_code, (padding, lbl_code_y))
 
-        # Editor Frame
+        # Editor BG
         pygame.draw.rect(self.surface, (20, 22, 28), self.editor_rect_cache)
         pygame.draw.rect(self.surface, (60, 65, 80), self.editor_rect_cache, 2)
         
         self._draw_editor_text(self.editor_rect_cache)
-
-        # Run Button
         self.surface.blit(self.icon_run, self.run_btn_rect)
-
-        # Final Blit
         screen.blit(self.surface, (self.x, 0))
 
     def _draw_editor_text(self, rect):
@@ -269,23 +281,46 @@ class CodePanel:
         pygame.draw.rect(self.surface, (30, 32, 40), (rect.x, rect.y, gutter_w, rect.height))
         pygame.draw.line(self.surface, (60, 60, 60), (rect.x + gutter_w, rect.y), (rect.x + gutter_w, rect.y + rect.height))
         
+        # Get Selection Range
+        sel_range = self.editor.get_selection_range()
+
         for i in range(start_line, end_line):
             line = self.editor.lines[i]
             
-            # Highlight current line
-            if i == self.editor.cursor_line:
-                pygame.draw.rect(self.surface, (45, 45, 55), 
-                                 (rect.x + gutter_w, ty - 2, rect.width - gutter_w, self.line_h))
+            # --- VẼ SELECTION HIGHLIGHT ---
+            if sel_range:
+                s, e = sel_range
+                # Nếu dòng này nằm trong vùng chọn
+                if s[0] <= i <= e[0]:
+                    sel_x_start = text_x
+                    sel_width = 0
+                    
+                    # Tính toán cột bắt đầu và kết thúc highlight trên dòng này
+                    col_start = 0 if i > s[0] else s[1]
+                    col_end = len(line) if i < e[0] else e[1]
+                    
+                    # Tính toạ độ pixel
+                    # Đo độ rộng từ đầu dòng đến col_start
+                    px_start = self.code_font.size(line[:col_start])[0]
+                    # Đo độ rộng phần được chọn
+                    px_w = self.code_font.size(line[col_start:col_end])[0]
+                    
+                    # Nếu là dòng trống mà đang được chọn (ví dụ chọn hết dòng) thì vẽ 1 cục nhỏ
+                    if px_w == 0 and i < e[0]: 
+                         px_w = 10 # Width ảo để thấy được dòng trống được chọn
+                    
+                    highlight_rect = pygame.Rect(text_x + px_start, ty, px_w, self.line_h)
+                    pygame.draw.rect(self.surface, COLOR_SELECTION, highlight_rect)
 
-            # Line Number
+            # --- DRAW LINE NUMBER ---
             num_s = self.code_font.render(str(i+1), True, (100, 100, 100))
             self.surface.blit(num_s, (rect.x + gutter_w - num_s.get_width() - 5, ty))
             
-            # Code
+            # --- DRAW TEXT ---
             code_s = self.code_font.render(line, True, COLOR_TEXT_MAIN)
             self.surface.blit(code_s, (text_x, ty))
             
-            # Cursor
+            # --- DRAW CURSOR ---
             if i == self.editor.cursor_line and self.cursor_visible:
                 w = self.code_font.size(line[:self.editor.cursor_col])[0]
                 cx = text_x + w
@@ -296,33 +331,23 @@ class CodePanel:
         self.surface.set_clip(old_clip)
 
     def draw_hint_popup(self, screen):
-        if not self.show_hint:
-            return
-
+        # (Giữ nguyên code vẽ hint của bạn)
+        if not self.show_hint: return
         popup_w = 400
         padding = 20
-        
         text_height = self.text_layout.calc_block_height(self.hints, popup_w - padding*2, has_title=True)
         popup_h = text_height + padding*2
-        
         px = self.x - popup_w - 20
         py = 50 
-        
         rect = pygame.Rect(px, py, popup_w, popup_h)
-        
         shadow_rect = rect.copy()
-        shadow_rect.x += 4
-        shadow_rect.y += 4
+        shadow_rect.x += 4; shadow_rect.y += 4
         pygame.draw.rect(screen, (0,0,0, 100), shadow_rect, border_radius=12)
-        
         pygame.draw.rect(screen, (30, 35, 45), rect, border_radius=12)
         pygame.draw.rect(screen, COLOR_ACCENT, rect, 2, border_radius=12)
-        
         curr_y = rect.y + padding
-        
         if self.hint_title:
             t = self.ui_font.render(self.hint_title, True, COLOR_ACCENT)
             screen.blit(t, (rect.x + padding, curr_y))
             curr_y += 30
-            
         self.text_layout.draw_paragraphs(screen, self.hints, rect.x + padding, curr_y, popup_w - padding*2, (200, 200, 200))
