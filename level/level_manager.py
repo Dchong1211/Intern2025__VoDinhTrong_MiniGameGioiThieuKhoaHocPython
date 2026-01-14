@@ -315,7 +315,7 @@ class LevelManager:
                 )
 
             self.enemy_manager.update(self.player)
-            self.item_manager.update(self.player, objective=self.objective)
+            self.item_manager.update(self.player, save_manager=self.save, objective=self.objective)
 
             if not self.checkpoint:
                 return

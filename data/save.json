@@ -1,28 +1,35 @@
 {
     "fruits": {
-        "Apple": 0,
-        "Bananas": 0,
-        "Cherries": 0,
-        "Kiwi": 0,
-        "Melon": 0,
-        "Orange": 58,
-        "Pineapple": 39,
-        "Strawberry": 0
+        "count": {
+            "Apple": 0,
+            "Bananas": 0,
+            "Cherries": 0,
+            "Kiwi": 0,
+            "Melon": 0,
+            "Orange": 0,
+            "Pineapple": 0,
+            "Strawberry": 0
+        },
+        "discovered": {
+            "Apple": false,
+            "Bananas": false,
+            "Cherries": false,
+            "Kiwi": false,
+            "Melon": false,
+            "Orange": false,
+            "Pineapple": false,
+            "Strawberry": false
+        }
     },
     "levels": {
         "unlocked": [
-            1,
-            2,
-            3,
-            4,
-            5
+            1
         ]
     },
     "characters": {
         "owned": [
-            "Virtual Guy",
-            "Mask Dude"
+            "Virtual Guy"
         ],
-        "selected": "Mask Dude"
+        "selected": "Virtual Guy"
     }
 }
