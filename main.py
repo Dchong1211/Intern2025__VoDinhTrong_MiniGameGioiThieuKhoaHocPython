@@ -155,7 +155,7 @@ def draw_game_view():
 # ================= MAIN LOOP =================
 running = True
 while running:
-    dt = clock.tick(FPS) / 1000
+    dt = clock.tick(FPS) / 1000.0
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -267,9 +267,12 @@ while running:
             
             if is_hovering_panel:
                 panel_res = code_panel.handle_event(event)
+                # Chỉ chuyển về chế độ soạn thảo (Code) khi click chuột VÀ
+                # Level hiện tại KHÔNG phải là chế độ Keyboard
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    state = GameState.LEVEL_CODE
-                    level_manager.player.reset_code_state()
+                    if code_panel.control_mode != "keyboard":
+                        state = GameState.LEVEL_CODE
+                        level_manager.player.reset_code_state()
             else:
                 action = hud.handle_event(event)
                 if action == "HOME":
@@ -294,13 +297,16 @@ while running:
     if state in (GameState.LEVEL_CODE, GameState.LEVEL_PLAY):
         # [FIX] Tự động load code khi vào level mới nếu chưa load
         if level_manager.current_level != last_codepanel_level:
-            code_panel.load_level(level_manager.current_level) # Sửa ở đây: Dùng load_level thay vì load_from_json
+            code_panel.load_level(level_manager.current_level) 
             last_codepanel_level = level_manager.current_level
 
         player_keys = None
+        # Chỉ nhận phím điều khiển nếu đang chơi (Play) và Code không đang chạy (code_active = False)
         if state == GameState.LEVEL_PLAY and not level_manager.player.code_active:
-            if pygame.key.get_focused():
-                player_keys = pygame.key.get_pressed()
+            # === [FIX] QUAN TRỌNG: Chỉ nhận phím nếu control_mode là "keyboard" ===
+            if code_panel.control_mode == "keyboard":
+                if pygame.key.get_focused():
+                    player_keys = pygame.key.get_pressed()
         
         level_manager.update(dt, player_keys)
         mission_panel.update(dt)
@@ -331,7 +337,7 @@ while running:
             mission_panel.open()
 
             # [FIX] Load level code khi chuyển màn bằng Transition
-            code_panel.load_level(next_level) # Sửa ở đây: Dùng load_level thay vì load_from_json
+            code_panel.load_level(next_level)
             last_codepanel_level = next_level
             
             state = GameState.LEVEL_CODE 

@@ -67,32 +67,63 @@ class HUD:
             self.panel_t = max(0.0, self.panel_t - self.speed * dt)
 
     def _draw_inventory(self, surf, scale, right_margin):
-        sw, _ = surf.get_size()
-        icon_size = int(48 * scale)
-        
-        start_x = sw - right_margin - int(60 * scale)
-        y = int(40 * scale)
-
-        items_to_draw = []
-        for name, icon in self.icons.items():
-            if self.item_manager.discovered.get(name):
-                 items_to_draw.append((name, icon))
-        
-        current_x = start_x
-        for name, icon in items_to_draw:
-            count = self.item_manager.count.get(name, 0)
-            text = self.count_font.render(str(count), True, (255, 255, 255))
-            text = pygame.transform.scale(text, (int(text.get_width()*scale), int(text.get_height()*scale)))
+            sw, _ = surf.get_size()
+            icon_size = int(48 * scale)
             
-            text_rect = text.get_rect(topright=(current_x, y + icon_size//4))
-            surf.blit(text, text_rect)
+            # Vị trí bắt đầu (từ phải sang trái)
+            start_x = sw - right_margin - int(60 * scale)
+            y = int(40 * scale) # Toạ độ Y phía trên cùng của hàng icon
+
+            items_to_draw = []
+            for name, icon in self.icons.items():
+                if self.item_manager.discovered.get(name):
+                    items_to_draw.append((name, icon))
             
-            icon_scaled = pygame.transform.scale(icon, (icon_size, icon_size))
-            icon_rect = icon_scaled.get_rect(topright=(text_rect.left - int(5*scale), y))
-            surf.blit(icon_scaled, icon_rect)
+            current_x = start_x
 
-            current_x = icon_rect.left - int(30 * scale)
+            # Độ dày của viền đen (tùy chỉnh theo scale, tối thiểu 1 pixel)
+            outline_offset = max(1, int(2 * scale))
 
+            for name, icon in items_to_draw:
+                count = self.item_manager.count.get(name, 0)
+                
+                # --- XỬ LÝ TEXT ---
+                text_str = str(count)
+                # 1. Tạo text trắng (nội dung chính)
+                white_text = self.count_font.render(text_str, True, (255, 255, 255))
+                # 2. Tạo text đen (dùng làm viền)
+                black_text = self.count_font.render(text_str, True, (0, 0, 0))
+
+                # Scale kích thước text
+                target_w = int(white_text.get_width() * scale)
+                target_h = int(white_text.get_height() * scale)
+                white_text = pygame.transform.scale(white_text, (target_w, target_h))
+                black_text = pygame.transform.scale(black_text, (target_w, target_h))
+                
+                # Tính toán vị trí Text:
+                # Dùng 'midright' để căn điểm giữa bên phải của text
+                # Trục Y = y + icon_size // 2 (Chính giữa chiều cao của icon) -> Giúp chữ cao lên, cân đối hơn
+                text_rect = white_text.get_rect(midright=(current_x, y + icon_size // 2))
+                
+                # Vẽ viền đen (vẽ lệch sang 4 hướng)
+                surf.blit(black_text, (text_rect.x - outline_offset, text_rect.y))
+                surf.blit(black_text, (text_rect.x + outline_offset, text_rect.y))
+                surf.blit(black_text, (text_rect.x, text_rect.y - outline_offset))
+                surf.blit(black_text, (text_rect.x, text_rect.y + outline_offset))
+
+                # Vẽ text trắng đè lên trên
+                surf.blit(white_text, text_rect)
+                
+                # --- XỬ LÝ ICON ---
+                icon_scaled = pygame.transform.scale(icon, (icon_size, icon_size))
+                # Đặt icon bên trái của text
+                # Căn chỉnh icon sao cho nó nằm thẳng hàng với hàng y
+                icon_rect = icon_scaled.get_rect(topright=(text_rect.left - int(5*scale), y))
+                surf.blit(icon_scaled, icon_rect)
+
+                # Cập nhật vị trí X cho món đồ tiếp theo (dịch sang trái)
+                current_x = icon_rect.left - int(30 * scale)
+                
     def _draw_settings(self, surf, scale):
         sw, sh = surf.get_size()
         size = int(self.btn_size * scale)

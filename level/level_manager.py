@@ -250,7 +250,6 @@ class LevelManager:
                 self.item_manager.add(obj.x, obj.y, obj.name)
                 # Cộng dồn số lượng
                 fruit_max[obj.name] = fruit_max.get(obj.name, 0) + 1
-                print(f"[DEBUG] Found Fruit by Name: {obj.name}")
 
             # Dự phòng: Kiểm tra theo TYPE (nếu lỡ đặt sai tên nhưng đúng Type)
             elif getattr(obj, "type", "") == "Items":
@@ -258,10 +257,8 @@ class LevelManager:
                 # Chỉ tính vào nhiệm vụ nếu tên hợp lệ
                 if obj.name in valid_fruits:
                     fruit_max[obj.name] = fruit_max.get(obj.name, 0) + 1
-                    print(f"[DEBUG] Found Fruit by Type: {obj.name}")
 
         # Gửi dữ liệu đếm được vào Objective để tạo nhiệm vụ
-        print(f"[DEBUG] Level Objective Generated: {fruit_max}")
         self.objective.generate(fruit_max)
 
     # ==================================================
@@ -337,7 +334,6 @@ class LevelManager:
                 
                 # TRƯỜNG HỢP 1: Đã gom đủ trái cây -> CHIẾN THẮNG
                 if is_completed:
-                    print("[INFO] Level Complete! Activating Checkpoint...")
                     self.checkpoint.activate()      # Kích hoạt animation cờ bay
                     self.state = LevelState.CHECKPOINT_ANIM # Chuyển state để chặn điều khiển và chờ animation
                     
@@ -347,7 +343,6 @@ class LevelManager:
 
                 # TRƯỜNG HỢP 2: Chưa đủ trái cây -> Hiện bảng nhắc nhở
                 elif not self.checkpoint.active:
-                    print("[INFO] Quest incomplete. Showing Mission Panel.")
                     if self.quest_panel:
                         self.checkpoint.on_player_touch(self.quest_panel)
                 

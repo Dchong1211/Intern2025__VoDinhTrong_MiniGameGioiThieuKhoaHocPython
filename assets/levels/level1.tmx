@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="34" height="25" tilewidth="16" tileheight="16" infinite="0" nextlayerid="9" nextobjectid="70">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="34" height="25" tilewidth="16" tileheight="16" infinite="0" nextlayerid="9" nextobjectid="73">
  <tileset firstgid="1" source="tileset.tsx"/>
  <objectgroup id="5" name="Checkpoints">
   <object id="37" name="Checkpoint" x="464" y="320" width="64" height="64"/>
@@ -11,7 +11,7 @@
  <objectgroup id="6" name="Items"/>
  <objectgroup id="4" name="Collisions">
   <object id="2" name="Collision" x="0" y="0" width="544" height="16"/>
-  <object id="3" name="Collision" x="0" y="16" width="16" height="288"/>
+  <object id="3" name="Collision" x="0" y="16" width="16" height="368"/>
   <object id="4" name="Collision" x="0" y="384" width="544" height="16"/>
   <object id="28" name="Apple" type="Items" x="320" y="352" width="32" height="32"/>
   <object id="58" name="Collision" x="16" y="320" width="64" height="64"/>

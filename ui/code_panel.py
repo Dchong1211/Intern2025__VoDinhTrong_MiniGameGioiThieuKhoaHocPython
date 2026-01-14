@@ -17,7 +17,10 @@ class CommandBtn:
         self.code = code_snippet
         self.base_color = color
         self.rect = pygame.Rect(0, 0, 0, 0)
-        self.font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 12)
+        try:
+            self.font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 12)
+        except:
+            self.font = pygame.font.SysFont("arial", 12, bold=True)
 
     def update_rect(self, x, y, w, h):
         self.rect = pygame.Rect(x, y, w, h)
@@ -46,8 +49,12 @@ class CodePanel:
         except:
             self.code_font = pygame.font.SysFont("consolas", 16)
 
-        self.ui_font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 16)
-        self.small_font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 12)
+        try:
+            self.ui_font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 16)
+            self.small_font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 12)
+        except:
+            self.ui_font = pygame.font.SysFont("arial", 16, bold=True)
+            self.small_font = pygame.font.SysFont("arial", 12)
 
         self.line_h = self.code_font.get_height() + 6
         
@@ -62,6 +69,9 @@ class CodePanel:
         self.hint_title = ""
         self.hints = []
         self.show_hint = False
+        
+        # Biến trạng thái điều khiển
+        self.control_mode = "code" 
 
         # --- COMMAND BUTTONS ---
         self.commands = [
@@ -77,7 +87,6 @@ class CodePanel:
         self.hint_btn_rect = pygame.Rect(0, 0, 40, 40)
         self.editor_rect_cache = pygame.Rect(0,0,0,0)
         
-        # Biến lưu vị trí Y động của các thành phần layout
         self.cmd_label_y = 160 
 
         self.icon_run = self._make_run_button_img((160, 50))
@@ -87,7 +96,6 @@ class CodePanel:
         self.cursor_timer = 0
         self.cursor_visible = True
         
-        # Load data sau khi init xong biến
         self.load_all_quests(config_path) 
         self.on_resize(x_pos + width, height)
 
@@ -95,12 +103,15 @@ class CodePanel:
         s = pygame.Surface(size, pygame.SRCALPHA)
         pygame.draw.rect(s, (40, 200, 100), (0,0,size[0], size[1]), border_radius=10)
         pygame.draw.rect(s, (255,255,255), (0,0,size[0], size[1]), 3, border_radius=10)
-        font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 20)
+        try:
+            font = pygame.font.Font("assets/Font/FVF Fernando 08.ttf", 20)
+        except:
+            font = pygame.font.SysFont("arial", 20, bold=True)
+            
         txt = font.render("RUN CODE", True, (255,255,255))
         s.blit(txt, ((size[0]-txt.get_width())//2, (size[1]-txt.get_height())//2))
         return s
 
-    # --- HÀM MỚI 1: TÍNH CHIỀU CAO VĂN BẢN MÀ KHÔNG VẼ ---
     def _calc_text_height(self, text, font, max_width):
         words = text.split(' ')
         lines = []
@@ -119,15 +130,11 @@ class CodePanel:
         line_height = font.get_height() + 4
         return len(lines) * line_height
 
-    # --- HÀM MỚI 2: TÍNH TOÁN LẠI VỊ TRÍ (LAYOUT) ---
     def recalculate_layout(self):
         padding = 20
         max_w = self.width - padding * 2
-        
-        # Bắt đầu tính Y từ dưới Title
         current_y = 50 
 
-        # 1. Tính chiều cao phần Instructions
         if self.instructions:
             for line in self.instructions:
                 h = self._calc_text_height(line, self.small_font, max_w)
@@ -136,10 +143,8 @@ class CodePanel:
             h = self._calc_text_height("No instructions.", self.small_font, max_w)
             current_y += h + 5
             
-        # 2. Đặt vị trí label "Click buttons..."
         self.cmd_label_y = current_y + 10
         
-        # 3. Đặt vị trí các nút bấm
         start_y_buttons = self.cmd_label_y + 25
         btn_h = 40
         cols = 2
@@ -152,15 +157,14 @@ class CodePanel:
             by = start_y_buttons + row * (btn_h + 15)
             cmd.update_rect(bx, by, col_w, btn_h)
             
-        # 4. Tính toán Editor & Nút Run
         rows = (len(self.commands) + cols - 1) // cols
         buttons_bottom = start_y_buttons + rows * (btn_h + 15)
         
         self.run_btn_rect.midbottom = (self.width // 2, self.height - 25)
         
-        y_editor = buttons_bottom + 40 # Khoảng cách từ nút code tới editor
+        y_editor = buttons_bottom + 20
         footer_h = 90
-        editor_h = max(50, self.height - y_editor - footer_h) # Đảm bảo không bị âm
+        editor_h = max(50, self.height - y_editor - footer_h)
         
         self.editor_rect_cache = pygame.Rect(padding, y_editor, self.width - padding*2, editor_h)
 
@@ -179,7 +183,7 @@ class CodePanel:
     def load_level(self, level_id):
         str_id = str(level_id)
         
-        # Reset editor
+        # Reset editor state (scroll, cursor) nhưng KHÔNG reset text
         self.editor.clear_selection()
         self.editor.scroll = 0
         self.editor.cursor_line = 0
@@ -188,36 +192,33 @@ class CodePanel:
         if str_id in self.all_quests_data:
             data = self.all_quests_data[str_id]
             
-            # 1. Load Instruction
+            # Load thông tin level
             self.title = data.get("title", f"Level {level_id}")
             raw_instr = data.get("instruction", [])
             self.instructions = raw_instr if isinstance(raw_instr, list) else [str(raw_instr)]
             
-            # 2. Load Guide
             guide_data = data.get("guide", data.get("hint", {}))
             self.hint_title = guide_data.get("title", "Tài liệu kỹ thuật")
             self.hints = guide_data.get("description", ["Không có tài liệu."])
             
-            # 3. Control Mode
-            control_mode = data.get("control_mode", "code")
-            if control_mode == "keyboard":
-                self.title += " (Phím)"
-                self.editor.lines = [
-                    "# LEVEL ĐIỀU KHIỂN BẰNG PHÍM",
-                    "# Dùng phím A, D, Space",
-                    "# để hoàn thành màn chơi."
-                ]
-            else:
-                self.editor.lines = ["# Viết giải pháp của bạn ở đây:"]
+            # Cập nhật Control Mode
+            self.control_mode = data.get("control_mode", "code")
             
-            print(f"[CodePanel] Displaying Level {level_id}")
+            if self.control_mode == "keyboard":
+                self.title += " (Phím)"
+                # Đã loại bỏ việc gán self.editor.lines tại đây
+            else:
+                # Đã loại bỏ việc gán self.editor.lines tại đây
+                pass
+            
+            print(f"[CodePanel] Displaying Level {level_id} (Mode: {self.control_mode})")
         else:
             print(f"[CodePanel] WARNING: Không tìm thấy level {level_id}")
             self.title = "No Data"
+            self.control_mode = "code"
             self.instructions = ["Chưa có dữ liệu level này."]
-            self.editor.lines = ["# No data"]
+            # Giữ nguyên text hiện tại của editor hoặc để CodeEditor tự xử lý
         
-        # === FIX: TÍNH LẠI LAYOUT SAU KHI LOAD TEXT MỚI ===
         self.recalculate_layout()
 
     def on_resize(self, screen_w, screen_h):
@@ -229,7 +230,6 @@ class CodePanel:
         padding = 20
         self.hint_btn_rect.topright = (self.width - padding, padding)
 
-        # === FIX: GỌI HÀM TÍNH TOÁN LAYOUT ===
         self.recalculate_layout()
 
     def update(self, dt):
@@ -247,6 +247,7 @@ class CodePanel:
             local_x = mx - self.x
             local_y = my
             
+            # Run Button - Vẫn trả về lines từ editor để Main xử lý
             if self.run_btn_rect.collidepoint(local_x, local_y):
                 return [l for l in self.editor.lines if l.strip()]
 
@@ -254,26 +255,28 @@ class CodePanel:
                 self.show_hint = not self.show_hint
                 return None
 
-            for cmd in self.commands:
-                if cmd.rect.collidepoint(local_x, local_y):
-                    self.editor.insert_text(cmd.code)
-                    return None
-            
-            if self.editor_rect_cache.collidepoint(local_x, local_y):
-                line, col = self._get_line_col_at(local_x, local_y)
-                self.editor.cursor_line = line
-                self.editor.cursor_col = col
-                self.editor.sel_start = (line, col)
-                self.editor.sel_end = (line, col)
-                self.editor.is_dragging = True
-            else:
-                self.editor.clear_selection()
+            # Logic chặn click khi ở chế độ Keyboard
+            if self.control_mode != "keyboard":
+                for cmd in self.commands:
+                    if cmd.rect.collidepoint(local_x, local_y):
+                        self.editor.insert_text(cmd.code)
+                        return None
+                
+                if self.editor_rect_cache.collidepoint(local_x, local_y):
+                    line, col = self._get_line_col_at(local_x, local_y)
+                    self.editor.cursor_line = line
+                    self.editor.cursor_col = col
+                    self.editor.sel_start = (line, col)
+                    self.editor.sel_end = (line, col)
+                    self.editor.is_dragging = True
+                else:
+                    self.editor.clear_selection()
         
         elif event.type == pygame.MOUSEBUTTONUP:
             self.editor.is_dragging = False
 
         elif event.type == pygame.MOUSEMOTION:
-            if self.editor.is_dragging:
+            if self.editor.is_dragging and self.control_mode != "keyboard":
                 mx, my = event.pos
                 local_x = mx - self.x
                 local_y = my
@@ -290,8 +293,9 @@ class CodePanel:
                 if self.editor.scroll < 0: self.editor.scroll = 0
                 
         elif event.type == pygame.KEYDOWN:
-            self.editor.handle_key(event)
-            self.cursor_visible = True
+            if self.control_mode != "keyboard":
+                self.editor.handle_key(event)
+                self.cursor_visible = True
 
         return None
 
@@ -371,15 +375,14 @@ class CodePanel:
             )
             
         # 4. Commands Buttons
-        # === FIX: DÙNG VỊ TRÍ ĐÃ TÍNH TOÁN THAY VÌ 160 CỐ ĐỊNH ===
-        instr_lbl = self.small_font.render("Click buttons to code:", True, (150, 150, 150))
-        self.surface.blit(instr_lbl, (padding, self.cmd_label_y))
-        
-        for cmd in self.commands:
-            cmd.draw(self.surface)
+        if self.control_mode != "keyboard":
+            instr_lbl = self.small_font.render("Click buttons to code:", True, (150, 150, 150))
+            self.surface.blit(instr_lbl, (padding, self.cmd_label_y))
+            
+            for cmd in self.commands:
+                cmd.draw(self.surface)
 
         # 5. Editor
-        # Vị trí editor đã được update trong recalculate_layout, chỉ việc vẽ
         lbl_code_y = self.editor_rect_cache.y - 25
         lbl_code = self.small_font.render("YOUR SOLUTION:", True, (255, 255, 255))
         self.surface.blit(lbl_code, (padding, lbl_code_y))
@@ -388,7 +391,10 @@ class CodePanel:
         pygame.draw.rect(self.surface, (60, 65, 80), self.editor_rect_cache, 2)
         
         self._draw_editor_text(self.editor_rect_cache)
-        self.surface.blit(self.icon_run, self.run_btn_rect)
+        
+        if self.control_mode != "keyboard":
+            self.surface.blit(self.icon_run, self.run_btn_rect)
+            
         screen.blit(self.surface, (self.x, 0))
 
     def _draw_editor_text(self, rect):
@@ -410,7 +416,8 @@ class CodePanel:
 
         for i in range(start_line, end_line):
             line = self.editor.lines[i]
-            if sel_range:
+            
+            if sel_range and self.control_mode != "keyboard":
                 s, e = sel_range
                 if s[0] <= i <= e[0]:
                     col_start = 0 if i > s[0] else s[1]
@@ -424,14 +431,20 @@ class CodePanel:
             num_s = self.code_font.render(str(i+1), True, (100, 100, 100))
             self.surface.blit(num_s, (rect.x + gutter_w - num_s.get_width() - 5, ty))
             
-            code_s = self.code_font.render(line, True, COLOR_TEXT_MAIN)
+            color = COLOR_TEXT_MAIN
+            if line.strip().startswith("#"):
+                color = (100, 150, 100) 
+            
+            code_s = self.code_font.render(line, True, color)
             self.surface.blit(code_s, (text_x, ty))
             
-            if i == self.editor.cursor_line and self.cursor_visible:
+            if i == self.editor.cursor_line and self.cursor_visible and self.control_mode != "keyboard":
                 w = self.code_font.size(line[:self.editor.cursor_col])[0]
                 cx = text_x + w
                 pygame.draw.line(self.surface, (255, 255, 0), (cx, ty), (cx, ty + self.line_h), 2)
+            
             ty += self.line_h
+        
         self.surface.set_clip(old_clip)
 
     def draw_hint_popup(self, screen):
