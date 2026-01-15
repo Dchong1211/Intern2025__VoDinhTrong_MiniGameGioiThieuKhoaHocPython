@@ -4,7 +4,7 @@ CHARACTERS = {
         "idle": "assets/Main Characters/Virtual Guy/Idle.png"
     },
     "Mask Dude": {
-        "price": 10,
+        "price": 2,
         "idle": "assets/Main Characters/Mask Dude/Idle.png"
     },
     "Pink Man": {

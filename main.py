@@ -290,8 +290,13 @@ while running:
                     else: sound.unmute(); hud.sound_on = True
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                state = GameState.LEVEL_CODE
-                level_manager.player.reset_code_state()
+                # Nếu là level keyboard, ESC sẽ về menu chọn level, nếu là level code thì về soạn code
+                if code_panel.control_mode == "keyboard":
+                    next_state = GameState.LEVEL_SELECT
+                    transition.start_close()
+                else:
+                    state = GameState.LEVEL_CODE
+                    level_manager.player.reset_code_state()
 
     # ================= UPDATE =================
     if state in (GameState.LEVEL_CODE, GameState.LEVEL_PLAY):
@@ -340,7 +345,13 @@ while running:
             code_panel.load_level(next_level)
             last_codepanel_level = next_level
             
-            state = GameState.LEVEL_CODE 
+            # --- [FIX QUAN TRỌNG] Tự động set trạng thái PLAY nếu là Keyboard level ---
+            if code_panel.control_mode == "keyboard":
+                state = GameState.LEVEL_PLAY
+            else:
+                state = GameState.LEVEL_CODE
+            # --------------------------------------------------------------------------
+            
             next_level = None
         next_state = None
         transition.start_open()

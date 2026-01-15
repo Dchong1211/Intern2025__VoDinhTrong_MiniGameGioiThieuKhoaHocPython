@@ -2,232 +2,316 @@
   "1": {
     "id": 1,
     "difficulty": 1,
-    "title": "Bước đi đầu tiên",
+    "title": "Khởi đầu hành trình",
     "control_mode": "code",
-    "instruction": ["Chào mừng! Hãy viết lệnh để đi đến cờ.", "Sử dụng hàm move_right()."],
+    "instruction": [
+      "Chào mừng! Hãy viết lệnh để đi đến cờ.",
+      "Sử dụng hàm move_right()."
+    ],
     "guide": {
-      "title": "Hàm di chuyển",
-      "description": ["move_right(n): Đi sang phải n bước.", "Ví dụ: move_right(5)"]
+      "title": "Khái niệm: Hàm (Function)",
+      "description": [
+        "Hàm là một nhóm các lệnh thực hiện một nhiệm vụ cụ thể.",
+        "Trong Python, hàm thường có tên và dấu ngoặc tròn ().",
+        "Ví dụ: move_right() là hàm ra lệnh cho nhân vật đi sang phải."
+      ]
     }
   },
   "2": {
     "id": 2,
     "difficulty": 1,
-    "title": "Bước đi đầu tiên (Thực hành)",
+    "title": "Khởi đầu",
     "control_mode": "keyboard",
-    "instruction": ["Map giống hệt Level 1.", "Hãy thử tự điều khiển bằng tay."],
+    "instruction": [
+      "Map giống hệt Level 1.",
+      "Hãy thử tự điều khiển bằng tay."
+    ],
     "guide": {
-      "title": "Điều khiển",
-      "description": ["Phím [D] để đi sang phải."]
+      "title": "Cơ chế: Điều khiển cơ bản",
+      "description": [
+        "Sử dụng các phím mũi tên hoặc cụm phím WASD.",
+        "[D]: Đi sang phải.",
+        "[A]: Đi sang trái."
+      ]
     }
   },
   "3": {
     "id": 3,
     "difficulty": 1,
-    "title": "Đi ngược chiều",
+    "title": "Quay đầu",
     "control_mode": "code",
-    "instruction": ["Cờ nằm bên trái.", "Hãy dùng lệnh đi ngược lại."],
+    "instruction": [
+      "Cờ nằm bên trái.",
+      "Hãy dùng lệnh đi ngược lại."
+    ],
     "guide": {
-      "title": "Di chuyển trái",
-      "description": ["move_left(n): Đi sang trái n bước."]
+      "title": "Khái niệm: Tham số (Argument)",
+      "description": [
+        "Tham số là giá trị bạn truyền vào bên trong dấu ngoặc () của hàm để thay đổi cách nó hoạt động.",
+        "Ví dụ: move_right(5) thì số 5 là tham số, nghĩa là 'đi 5 bước'.",
+        "Nếu không điền gì, hàm sẽ dùng giá trị mặc định."
+      ]
     }
   },
   "4": {
     "id": 4,
     "difficulty": 1,
-    "title": "Đi ngược chiều (Thực hành)",
+    "title": "Quay đầu (Thực hành)",
     "control_mode": "keyboard",
-    "instruction": ["Vẫn là map đó.", "Dùng phím A để đi lùi."],
+    "instruction": [
+      "Vẫn là map đó.",
+      "Dùng phím A để đi lùi."
+    ],
     "guide": {
-      "title": "Điều khiển",
-      "description": ["Phím [A] để đi sang trái."]
+      "title": "Cơ chế: Phương hướng",
+      "description": [
+        "Trong không gian 2D, trục ngang là trục X.",
+        "Hãy chú ý hướng mặt của nhân vật."
+      ]
     }
   },
   "5": {
     "id": 5,
     "difficulty": 2,
-    "title": "Vượt chướng ngại",
+    "title": "Vực thẳm",
     "control_mode": "code",
-    "instruction": ["Có hố sâu phía trước.", "Đi đến mép rồi nhảy qua."],
+    "instruction": [
+      "Có hố sâu phía trước.",
+      "Đi đến mép rồi nhảy qua."
+    ],
     "guide": {
-      "title": "Lệnh Nhảy",
-      "description": ["jump(): Nhảy lên tại chỗ.", "Kết hợp move_right() trước khi jump()."]
+      "title": "Lệnh: jump()",
+      "description": [
+        "jump() là hàm kích hoạt hành động nhảy.",
+        "Trong lập trình game, lệnh này thường tác động vào trục Y (trục dọc) của nhân vật.",
+        "Cần kết hợp đúng thời điểm với lệnh di chuyển."
+      ]
     }
   },
   "6": {
     "id": 6,
     "difficulty": 2,
-    "title": "Vượt chướng ngại (Thực hành)",
+    "title": "Vực thẳm (Thực hành)",
     "control_mode": "keyboard",
-    "instruction": ["Tự mình nhảy qua hố.", "Cẩn thận rơi xuống vực."],
+    "instruction": [
+      "Tự mình nhảy qua hố.",
+      "Cẩn thận rơi xuống vực."
+    ],
     "guide": {
-      "title": "Điều khiển",
-      "description": ["Phím [SPACE] để nhảy."]
+      "title": "Cơ chế: Trọng lực",
+      "description": [
+        "Nhân vật chịu ảnh hưởng của trọng lực.",
+        "Nếu bạn nhảy [SPACE] mà không giữ phím di chuyển, bạn sẽ rơi lại đúng vị trí cũ.",
+        "Hãy lấy đà để nhảy xa hơn."
+      ]
     }
   },
   "7": {
     "id": 7,
     "difficulty": 2,
-    "title": "Kết hợp động tác",
+    "title": "Chuỗi hành động",
     "control_mode": "code",
-    "instruction": ["Đi phải, nhảy lên bục, đi tiếp.", "Code chạy tuần tự từ trên xuống."],
+    "instruction": [
+      "Đi phải, nhảy lên bục, đi tiếp.",
+      "Code chạy tuần tự từ trên xuống."
+    ],
     "guide": {
-      "title": "Tuần tự (Sequence)",
-      "description": ["1. move_right(2)", "2. jump()", "3. move_right(3)"]
+      "title": "Khái niệm: Tuần tự (Sequence)",
+      "description": [
+        "Máy tính thực hiện các lệnh lần lượt từ dòng trên cùng xuống dòng dưới cùng.",
+        "Thứ tự rất quan trọng: jump() rồi mới move() sẽ khác với move() rồi mới jump()."
+      ]
     }
   },
   "8": {
     "id": 8,
     "difficulty": 2,
-    "title": "Kết hợp động tác (Thực hành)",
+    "title": "Chuỗi hành động (Thực hành)",
     "control_mode": "keyboard",
-    "instruction": ["Phối hợp tay mắt.", "Đi đến đúng điểm rồi nhảy."],
+    "instruction": [
+      "Phối hợp tay mắt.",
+      "Đi đến đúng điểm rồi nhảy."
+    ],
     "guide": {
-      "title": "Mẹo",
-      "description": ["Giữ phím di chuyển khi đang ở trên không."]
+      "title": "Cơ chế: Hitbox (Hộp va chạm)",
+      "description": [
+        "Hitbox là vùng không gian của nhân vật.",
+        "Nếu Hitbox của chân nhân vật không chạm đất, bạn sẽ rơi.",
+        "Hãy canh mép vực cẩn thận."
+      ]
     }
   },
   "9": {
     "id": 9,
     "difficulty": 3,
-    "title": "Leo cầu thang",
+    "title": "Leo núi thủ công",
     "control_mode": "code",
-    "instruction": ["Bậc thang đi lên liên tục.", "Viết code lặp lại hành động nhảy."],
+    "instruction": [
+      "Bậc thang đi lên liên tục.",
+      "Viết code lặp lại hành động nhảy."
+    ],
     "guide": {
-      "title": "Lặp thủ công",
-      "description": ["Copy paste dòng jump() nhiều lần.", "jump()", "move_right(1)", "jump()..."]
+      "title": "Khái niệm: Lặp lại (Repetition)",
+      "description": [
+        "Khi một hành động cần thực hiện nhiều lần (như leo 10 bậc thang), ta có thể viết 10 dòng lệnh giống nhau.",
+        "Tuy nhiên, cách này làm code dài và khó sửa lỗi."
+      ]
     }
   },
   "10": {
     "id": 10,
     "difficulty": 3,
-    "title": "Leo cầu thang (Thực hành)",
+    "title": "Leo núi (Thực hành)",
     "control_mode": "keyboard",
-    "instruction": ["Leo bằng tay sẽ mỏi hơn code.", "Thử thách độ kiên nhẫn."],
+    "instruction": [
+      "Leo bằng tay sẽ mỏi hơn code.",
+      "Thử thách độ kiên nhẫn."
+    ],
     "guide": {
-      "title": "Mẹo",
-      "description": ["Nhấp phím nhảy đều đặn."]
+      "title": "Mẹo chơi game",
+      "description": [
+        "Double Jump (nếu có): Một số game cho phép nhảy lần 2 trên không trung.",
+        "Ở màn này, hãy tập trung vào nhịp điệu nhảy đều đặn."
+      ]
     }
   },
   "11": {
     "id": 11,
     "difficulty": 3,
-    "title": "Vòng lặp For",
+    "title": "Tự động hóa",
     "control_mode": "code",
-    "instruction": ["Đường rất dài.", "Dùng vòng lặp thay vì viết 10 dòng code."],
+    "instruction": [
+      "Đường rất dài.",
+      "Dùng vòng lặp thay vì viết 10 dòng code."
+    ],
     "guide": {
-      "title": "Cấu trúc For",
-      "description": ["for i in range(10):", "    move_right(1)"]
+      "title": "Khái niệm: Vòng lặp For",
+      "description": [
+        "Cấu trúc: 'for i in range(n):'",
+        "Trong đó 'n' là số lần lặp lại.",
+        "Các lệnh bên trong vòng lặp sẽ được máy tính thực hiện n lần tự động."
+      ]
     }
   },
   "12": {
     "id": 12,
     "difficulty": 3,
-    "title": "Vòng lặp For (Thực hành)",
+    "title": "Tự động hóa (Thực hành)",
     "control_mode": "keyboard",
-    "instruction": ["Chạy marathon về đích.", "Giữ chặt phím đi."],
+    "instruction": [
+      "Chạy marathon về đích.",
+      "Giữ chặt phím đi."
+    ],
     "guide": {
-      "title": "Lưu ý",
-      "description": ["Đừng thả tay ra giữa chừng."]
+      "title": "Cơ chế: Scroll (Cuộn màn hình)",
+      "description": [
+        "Camera sẽ di chuyển theo nhân vật.",
+        "Đừng đi quá nhanh nếu không bạn sẽ không kịp nhìn thấy chướng ngại vật phía trước."
+      ]
     }
   },
   "13": {
     "id": 13,
     "difficulty": 4,
-    "title": "Bậc thang lặp",
+    "title": "Tổ hợp lặp",
     "control_mode": "code",
-    "instruction": ["Mẫu: Nhảy rồi đi 2 bước.", "Lặp lại mẫu này 4 lần."],
+    "instruction": [
+      "Mẫu: Nhảy rồi đi 2 bước.",
+      "Lặp lại mẫu này 4 lần."
+    ],
     "guide": {
-      "title": "Block Code",
-      "description": ["for i in range(4):", "    jump()", "    move_right(2)"]
+      "title": "Khái niệm: Khối lệnh (Indentation)",
+      "description": [
+        "Trong Python, các dòng lệnh thụt đầu dòng (lùi vào trong) được coi là thuộc về vòng lặp.",
+        "Tất cả các lệnh thụt vào sau 'for' sẽ được lặp lại cùng nhau như một nhóm."
+      ]
     }
   },
   "14": {
     "id": 14,
     "difficulty": 4,
-    "title": "Bậc thang lặp (Thực hành)",
+    "title": "Tổ hợp lặp (Thực hành)",
     "control_mode": "keyboard",
-    "instruction": ["Thực hiện combo: Nhảy + Đi.", "Lặp lại bằng tay 4 lần."],
+    "instruction": [
+      "Thực hiện combo: Nhảy + Đi.",
+      "Lặp lại bằng tay 4 lần."
+    ],
     "guide": {
-      "title": "Nhịp điệu",
-      "description": ["Cố gắng giữ nhịp điệu ổn định."]
+      "title": "Kỹ năng: Combo",
+      "description": [
+        "Combo là chuỗi hành động được thực hiện liên tục không ngắt quãng.",
+        "Giữ nút di chuyển ngay cả khi đang thực hiện hành động nhảy để giữ quán tính."
+      ]
     }
   },
   "15": {
     "id": 15,
     "difficulty": 4,
-    "title": "Zig Zag",
+    "title": "Logic ZigZag",
     "control_mode": "code",
-    "instruction": ["Đi phải, nhảy, đi trái, nhảy.", "Cẩn thận hướng đi."],
+    "instruction": [
+      "Đi phải, nhảy, đi trái, nhảy.",
+      "Cẩn thận hướng đi."
+    ],
     "guide": {
-      "title": "Logic hướng",
-      "description": ["Chú ý đổi hướng (1 và -1)"]
+      "title": "Tư duy logic",
+      "description": [
+        "Để đi Zigzag, bạn cần đổi hướng liên tục.",
+        "Hãy tưởng tượng đường đi trong đầu trước khi viết code: +1 (Phải), Nhảy, -1 (Trái), Nhảy."
+      ]
     }
   },
   "16": {
     "id": 16,
     "difficulty": 4,
-    "title": "Zig Zag (Thực hành)",
+    "title": "Logic ZigZag (Thực hành)",
     "control_mode": "keyboard",
-    "instruction": ["Điều khiển nhân vật nhảy qua lại.", "Đừng để chóng mặt."],
+    "instruction": [
+      "Điều khiển nhân vật nhảy qua lại.",
+      "Đừng để chóng mặt."
+    ],
     "guide": {
-      "title": "Phản xạ",
-      "description": ["Đổi tay A và D liên tục."]
+      "title": "Kỹ năng: Phản xạ",
+      "description": [
+        "Phản xạ là khả năng phản ứng nhanh với tình huống.",
+        "Luyện tập chuyển đổi nhanh giữa phím [A] và [D] để không bị trượt chân."
+      ]
     }
   },
-  "17": {
+"17": {
     "id": 17,
     "difficulty": 5,
-    "title": "Hai vòng lặp",
-    "control_mode": "code",
-    "instruction": ["Đi đoạn 1 (bậc nhỏ). Đi đoạn 2 (bậc lớn).", "Dùng 2 vòng for riêng biệt."],
+    "title": "Chạm trán: Heo Giận Dữ",
+    "control_mode": "keyboard",
+    "instruction": [
+      "Đối thủ đầu tiên: Angry Pig.",
+      "Tiêu diệt nó để mở đường về đích."
+    ],
     "guide": {
-      "title": "Nối tiếp",
-      "description": ["Hết vòng lặp 1 sẽ chạy vòng lặp 2."]
+      "title": "Hồ sơ quái vật: Angry Pig",
+      "description": [
+        "Đặc điểm: Tuần tra trên mặt đất.",
+        "Cơ chế: Khi phát hiện người chơi, nó sẽ nổi giận và tăng tốc độ chạy.",
+        "Cách diệt: Nhảy lên và đạp trúng đỉnh đầu."
+      ]
     }
   },
   "18": {
     "id": 18,
     "difficulty": 5,
-    "title": "Hai vòng lặp (Thực hành)",
+    "title": "Chạm trán: Heo Giận Dữ",
     "control_mode": "keyboard",
-    "instruction": ["Vượt qua 2 địa hình khác nhau.", "Thích ứng với sự thay đổi."],
+    "instruction": [
+      "Đối thủ đầu tiên: Angry Pig.",
+      "Tiêu diệt nó để mở đường về đích."
+    ],
     "guide": {
-      "title": "Quan sát",
-      "description": ["Nhìn trước địa hình tiếp theo."]
-    }
-  },
-  "19": {
-    "id": 19,
-    "difficulty": 5,
-    "title": "Biến số (Variables)",
-    "control_mode": "code",
-    "instruction": ["Đặt buoc_nhay = 3.", "Dùng biến này để di chuyển."],
-    "guide": {
-      "title": "Khai báo biến",
-      "description": ["x = 3", "move_right(x)"]
-    }
-  },
-  "20": {
-    "id": 20,
-    "difficulty": 5,
-    "title": "Biến số (Thực hành)",
-    "control_mode": "keyboard",
-    "instruction": ["Cũng khoảng cách đó.", "Tự căn chỉnh bước nhảy bằng tay."],
-    "guide": {
-      "title": "Cảm giác",
-      "description": ["Cảm nhận khoảng cách 3 ô gạch."]
-    }
-  },
-  "21": {
-    "id": 21,
-    "difficulty": 6,
-    "title": "Toán học",
-    "control_mode": "code",
-    "instruction": ["Tính quãng đường: a = 5 + 2.", "Đi theo kết quả a."],
-    "guide": {
-      "title": "Phép cộng",
-      "description": ["Máy tính làm toán rất giỏi."]
+      "title": "Hồ sơ quái vật: Angry Pig",
+      "description": [
+        "Đặc điểm: Tuần tra trên mặt đất.",
+        "Cơ chế: Khi phát hiện người chơi, nó sẽ nổi giận và tăng tốc độ chạy.",
+        "Cách diệt: Nhảy lên và đạp trúng đỉnh đầu."
+      ]
     }
   }
 }

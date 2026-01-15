@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="34" height="25" tilewidth="16" tileheight="16" infinite="0" nextlayerid="9" nextobjectid="135">
+ <tileset firstgid="1" source="tileset.tsx"/>
+ <objectgroup id="5" name="Checkpoints">
+  <object id="37" name="Checkpoint" x="16" y="272" width="64" height="64"/>
+ </objectgroup>
+ <objectgroup id="8" name="Enemy">
+  <object id="131" name="AngryPig" type="Enemy" x="320" y="304" width="32" height="32">
+   <properties>
+    <property name="offNeg" type="float" value="3"/>
+    <property name="offPos" type="float" value="3"/>
+   </properties>
+  </object>
+  <object id="132" name="AngryPig" type="Enemy" x="64" y="160" width="32" height="32">
+   <properties>
+    <property name="offNeg" type="float" value="3"/>
+    <property name="offPos" type="float" value="3"/>
+   </properties>
+  </object>
+  <object id="133" name="AngryPig" type="Enemy" x="224" y="160" width="32" height="32">
+   <properties>
+    <property name="offNeg" type="float" value="4"/>
+    <property name="offPos" type="float" value="4"/>
+   </properties>
+  </object>
+  <object id="134" name="AngryPig" type="Enemy" x="368" y="48" width="32" height="32">
+   <properties>
+    <property name="offNeg" type="float" value="2"/>
+    <property name="offPos" type="float" value="2"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="2" name="Player">
+  <object id="1" name="Player" x="496" y="48" width="32" height="32"/>
+ </objectgroup>
+ <objectgroup id="6" name="Items"/>
+ <objectgroup id="4" name="Collisions">
+  <object id="2" name="Collision" x="0" y="0" width="544" height="16"/>
+  <object id="3" name="Collision" x="0" y="16" width="16" height="368"/>
+  <object id="4" name="Collision" x="0" y="384" width="544" height="16"/>
+  <object id="69" name="Collision" x="528" y="16" width="16" height="368"/>
+  <object id="76" name="Collision" x="16" y="336" width="144" height="48"/>
+  <object id="79" name="Cherries" type="Items" x="112" y="48" width="32" height="32"/>
+  <object id="81" name="Bananas" type="Items" x="496" y="304" width="32" height="32"/>
+  <object id="92" name="Cherries" type="Items" x="80" y="48" width="32" height="32"/>
+  <object id="95" name="Collision" x="304" y="80" width="224" height="48"/>
+  <object id="103" name="Collision" x="16" y="80" width="144" height="48"/>
+  <object id="104" name="Cherries" type="Items" x="16" y="48" width="32" height="32"/>
+  <object id="107" name="Cherries" type="Items" x="48" y="48" width="32" height="32"/>
+  <object id="110" name="Apple" type="Items" x="304" y="112" width="32" height="32"/>
+  <object id="111" name="Apple" type="Items" x="336" y="112" width="32" height="32"/>
+  <object id="112" name="Apple" type="Items" x="368" y="112" width="32" height="32"/>
+  <object id="114" name="OneWay" x="480" y="288" width="48" height="16"/>
+  <object id="115" name="OneWay" x="480" y="192" width="48" height="16"/>
+  <object id="117" name="OneWay" x="384" y="240" width="48" height="16"/>
+  <object id="118" name="OneWay" x="480" y="240" width="48" height="16"/>
+  <object id="119" name="OneWay" x="384" y="192" width="48" height="16"/>
+  <object id="120" name="OneWay" x="160" y="144" width="48" height="16"/>
+  <object id="121" name="OneWay" x="160" y="112" width="48" height="16"/>
+  <object id="122" name="OneWay" x="256" y="80" width="48" height="16"/>
+  <object id="123" name="Collision" x="16" y="192" width="368" height="64"/>
+  <object id="125" name="Collision" x="224" y="336" width="304" height="48"/>
+  <object id="126" name="Bananas" type="Items" x="464" y="304" width="32" height="32"/>
+  <object id="127" name="Bananas" type="Items" x="432" y="304" width="32" height="32"/>
+  <object id="128" name="Apple" type="Items" x="496" y="160" width="32" height="32"/>
+  <object id="129" name="Bananas" type="Items" x="96" y="304" width="32" height="32"/>
+ </objectgroup>
+ <layer id="1" name="Ground" width="34" height="25">
+  <data encoding="csv">
+4,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,5,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,2,2,2,2,2,2,2,2,3,0,0,0,0,0,0,62,63,64,1,2,2,2,2,2,2,2,2,2,2,2,2,2,23,
+25,24,24,24,24,24,24,24,24,25,0,0,0,0,0,0,0,0,0,23,24,24,24,24,24,24,24,24,24,24,24,24,24,23,
+25,46,46,46,46,46,46,46,46,47,62,63,64,0,0,0,0,0,0,45,46,46,46,46,46,46,46,46,46,46,46,46,46,23,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,0,0,0,0,0,0,0,0,0,62,63,64,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,62,63,64,0,0,0,62,63,64,23,
+25,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,25,0,0,0,0,0,0,0,0,0,23,
+25,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,25,0,0,0,0,0,0,0,0,0,23,
+25,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,46,47,62,63,64,0,0,0,62,63,64,23,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,62,63,64,23,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+25,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,23,
+25,24,24,24,24,24,24,24,24,25,0,0,0,0,23,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,23,
+25,24,24,24,24,24,24,24,24,25,0,0,0,0,23,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,23,
+26,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,27
+</data>
+ </layer>
+</map>

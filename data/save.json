@@ -1,7 +1,7 @@
 {
     "fruits": {
         "count": {
-            "Apple": 0,
+            "Apple": 27,
             "Bananas": 0,
             "Cherries": 0,
             "Kiwi": 0,
@@ -11,7 +11,7 @@
             "Strawberry": 0
         },
         "discovered": {
-            "Apple": false,
+            "Apple": true,
             "Bananas": false,
             "Cherries": false,
             "Kiwi": false,
@@ -23,7 +23,9 @@
     },
     "levels": {
         "unlocked": [
-            1
+            1,
+            2,
+            15
         ]
     },
     "characters": {
